@@ -298,10 +298,11 @@ Item {
             markerRel: root.useTimeAware && root.sessionTimePct >= 0 ? root.sessionTimePct / 100 : -1
             lineWidth: 3
             fontScale: 0.3
-            centerIcon: (Plasmoid.configuration.ringCenter || "percent") === "logo"
+            centerIcon: (Plasmoid.configuration.ringCenter || "percent").indexOf("logo") === 0
                 ? Qt.resolvedUrl((Plasmoid.configuration.panelIcon || "claude") === "tile"
                     ? "../icons/claude-tile.svg" : "../icons/claude.svg").toString()
                 : ""
+            centerPercentOverlay: (Plasmoid.configuration.ringCenter || "percent") === "logo_percent"
         }
 
         UsageRing {
@@ -314,10 +315,11 @@ Item {
             markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
             lineWidth: 3
             fontScale: 0.3
-            centerIcon: (Plasmoid.configuration.ringCenter || "percent") === "logo"
+            centerIcon: (Plasmoid.configuration.ringCenter || "percent").indexOf("logo") === 0
                 ? Qt.resolvedUrl((Plasmoid.configuration.panelIcon || "claude") === "tile"
                     ? "../icons/claude-tile.svg" : "../icons/claude.svg").toString()
                 : ""
+            centerPercentOverlay: (Plasmoid.configuration.ringCenter || "percent") === "logo_percent"
         }
 
         Repeater {
@@ -332,10 +334,11 @@ Item {
                 markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
                 lineWidth: 3
                 fontScale: 0.3
-            centerIcon: (Plasmoid.configuration.ringCenter || "percent") === "logo"
+            centerIcon: (Plasmoid.configuration.ringCenter || "percent").indexOf("logo") === 0
                 ? Qt.resolvedUrl((Plasmoid.configuration.panelIcon || "claude") === "tile"
                     ? "../icons/claude-tile.svg" : "../icons/claude.svg").toString()
                 : ""
+            centerPercentOverlay: (Plasmoid.configuration.ringCenter || "percent") === "logo_percent"
             }
         }
 
