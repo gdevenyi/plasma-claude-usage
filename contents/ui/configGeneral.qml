@@ -27,6 +27,7 @@ KCM.SimpleKCM {
     property int cfg_processCheckInterval
     property string cfg_popupStyle
     property string cfg_panelIcon
+    property string cfg_ringCenter
     property bool cfg_enableNotifications
     property bool cfg_enableUpdateCheck
     property bool cfg_showInstallations
@@ -360,6 +361,13 @@ KCM.SimpleKCM {
             model: ["Claude", "Tile"]
             currentIndex: (cfg_panelIcon || "claude") === "tile" ? 1 : 0
             onCurrentIndexChanged: cfg_panelIcon = currentIndex === 1 ? "tile" : "claude"
+        }
+
+        QQC2.ComboBox {
+            Kirigami.FormData.label: tr("Ring center:")
+            model: [tr("Percent"), tr("Logo")]
+            currentIndex: (cfg_ringCenter || "percent") === "logo" ? 1 : 0
+            onCurrentIndexChanged: cfg_ringCenter = currentIndex === 1 ? "logo" : "percent"
         }
 
         RowLayout {

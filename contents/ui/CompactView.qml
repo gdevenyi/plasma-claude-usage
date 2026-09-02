@@ -298,6 +298,10 @@ Item {
             markerRel: root.useTimeAware && root.sessionTimePct >= 0 ? root.sessionTimePct / 100 : -1
             lineWidth: 3
             fontScale: 0.3
+            centerIcon: (Plasmoid.configuration.ringCenter || "percent") === "logo"
+                ? Qt.resolvedUrl((Plasmoid.configuration.panelIcon || "claude") === "tile"
+                    ? "../icons/claude-tile.svg" : "../icons/claude.svg").toString()
+                : ""
         }
 
         UsageRing {
@@ -310,6 +314,10 @@ Item {
             markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
             lineWidth: 3
             fontScale: 0.3
+            centerIcon: (Plasmoid.configuration.ringCenter || "percent") === "logo"
+                ? Qt.resolvedUrl((Plasmoid.configuration.panelIcon || "claude") === "tile"
+                    ? "../icons/claude-tile.svg" : "../icons/claude.svg").toString()
+                : ""
         }
 
         Repeater {
@@ -324,6 +332,10 @@ Item {
                 markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
                 lineWidth: 3
                 fontScale: 0.3
+            centerIcon: (Plasmoid.configuration.ringCenter || "percent") === "logo"
+                ? Qt.resolvedUrl((Plasmoid.configuration.panelIcon || "claude") === "tile"
+                    ? "../icons/claude-tile.svg" : "../icons/claude.svg").toString()
+                : ""
             }
         }
 
