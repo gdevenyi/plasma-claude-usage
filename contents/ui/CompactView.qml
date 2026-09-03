@@ -303,6 +303,7 @@ Item {
                     ? "../icons/claude-tile.svg" : "../icons/claude.svg").toString()
                 : ""
             centerPercentOverlay: (Plasmoid.configuration.ringCenter || "percent") === "logo_percent"
+            cornerLabel: Plasmoid.configuration.showWindowLabels === true ? "5h" : ""
         }
 
         UsageRing {
@@ -320,6 +321,7 @@ Item {
                     ? "../icons/claude-tile.svg" : "../icons/claude.svg").toString()
                 : ""
             centerPercentOverlay: (Plasmoid.configuration.ringCenter || "percent") === "logo_percent"
+            cornerLabel: Plasmoid.configuration.showWindowLabels === true ? "7d" : ""
         }
 
         Repeater {

@@ -28,6 +28,7 @@ KCM.SimpleKCM {
     property string cfg_popupStyle
     property string cfg_panelIcon
     property string cfg_ringCenter
+    property bool cfg_showWindowLabels
     property int cfg_panelMargin
     property bool cfg_enableNotifications
     property bool cfg_enableUpdateCheck
@@ -374,6 +375,13 @@ KCM.SimpleKCM {
                 textFromValue: function(value) { return value + "px" }
                 valueFromText: function(text) { return parseInt(text) || 0 }
             }
+        }
+
+        QQC2.CheckBox {
+            Kirigami.FormData.label: tr("Window labels:")
+            text: tr("Show 5h/7d on rings")
+            checked: cfg_showWindowLabels
+            onCheckedChanged: cfg_showWindowLabels = checked
         }
 
         QQC2.ComboBox {

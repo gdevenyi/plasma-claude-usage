@@ -30,6 +30,10 @@
             <label>Panel icon size (0 = auto)</label>
             <default>0</default>
         </entry>
+        <entry name="showWindowLabels" type="Bool">
+            <label>Show 5h/7d window labels on the panel rings</label>
+            <default>false</default>
+        </entry>
         <entry name="ringCenter" type="String">
             <label>Ring center content (percent or logo)</label>
             <default>percent</default>
