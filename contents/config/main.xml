@@ -78,6 +78,10 @@
             <label>Process check interval in seconds</label>
             <default>30</default>
         </entry>
+        <entry name="credentialsPath" type="String">
+            <label>Path to .credentials.json or the folder containing it (empty = $CLAUDE_CONFIG_DIR, else ~/.claude)</label>
+            <default></default>
+        </entry>
         <entry name="baseUrl" type="String">
             <label>Custom API base URL (leave empty to use ~/.claude/.credentials.json)</label>
             <default></default>

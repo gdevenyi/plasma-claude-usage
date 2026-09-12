@@ -235,7 +235,7 @@ PlasmoidItem {
         running: root.hasRateLimitError && !root.baseUrl
         repeat: true
         onTriggered: {
-            tokenWatcher.connectSource("cat ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json 2>/dev/null")
+            tokenWatcher.connectSource(readCredentialsCmd())
         }
     }
 
@@ -300,6 +300,80 @@ PlasmoidItem {
         }
     }
 
+    Connections {
+        target: Plasmoid.configuration
+        function onCredentialsPathChanged() {
+            // Reads already in flight carry the old path in their source name,
+            // so drop them before they can land on top of the new account.
+            fileReader.connectedSources = []
+            tokenWatcher.connectedSources = []
+            usageFetcher.connectedSources = []
+            emailReader.connectedSources = []
+
+            root.accessToken = ""
+            root.credsTier = ""
+            root.credsSub = ""
+            root.accountEmail = ""
+            root.accountTier = ""
+            root.credentialsRetryCount = 0
+            root.alertedThresholds = ({})
+            updatePlanName()
+
+            refresh()
+            refreshTokenStats()
+        }
+    }
+
+    // --- Claude config location ------------------------------------------
+    // An empty credentialsPath keeps the original behaviour, $CLAUDE_CONFIG_DIR
+    // included. A value ending in .json is the credentials file itself;
+    // anything else is the Claude config folder and the file name is appended.
+    readonly property string configuredClaudePath: (Plasmoid.configuration.credentialsPath || "").trim()
+
+    // Shell-quotes a user-supplied path. A leading ~ is expanded here because
+    // single quotes would otherwise hand it to cat literally.
+    function shQuotePath(p) {
+        var quoted = function(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'" }
+        if (p === "~") return "\"$HOME\""
+        if (p.indexOf("~/") === 0) return "\"$HOME\"" + quoted(p.substring(1))
+        return quoted(p)
+    }
+
+    function credentialsFileExpr() {
+        var p = root.configuredClaudePath
+        if (!p) return "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json\""
+        if (/\.json$/i.test(p)) return shQuotePath(p)
+        return shQuotePath(p.replace(/\/+$/, "") + "/.credentials.json")
+    }
+
+    function claudeDirExpr() {
+        var p = root.configuredClaudePath
+        if (!p) return "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}\""
+        if (/\.json$/i.test(p)) {
+            var cut = p.lastIndexOf("/")
+            return shQuotePath(cut > 0 ? p.substring(0, cut) : (cut === 0 ? "/" : "."))
+        }
+        return shQuotePath(p.replace(/\/+$/, ""))
+    }
+
+    // Assignment prefix so child processes (claude, find) see the same folder.
+    // Only emitted when configured, so the default command stays byte-identical.
+    function claudeDirEnvPrefix() {
+        return root.configuredClaudePath ? "env CLAUDE_CONFIG_DIR=" + claudeDirExpr() + " " : ""
+    }
+
+    function readCredentialsCmd() {
+        return "cat " + credentialsFileExpr() + " 2>/dev/null"
+    }
+
+    // Claude Code keeps the account file beside the config folder by default
+    // ($HOME/.claude.json) but inside it when CLAUDE_CONFIG_DIR is used, so
+    // look in the folder first and fall back to $HOME.
+    function readAccountCmd() {
+        var dir = root.configuredClaudePath ? claudeDirExpr() : "\"${CLAUDE_CONFIG_DIR:-$HOME}\""
+        return "f=" + dir + "/.claude.json; [ -s \"$f\" ] || f=\"$HOME/.claude.json\"; cat \"$f\" 2>/dev/null"
+    }
+
     // Credentials reader
     Plasma5Support.DataSource {
         id: fileReader
@@ -326,7 +400,7 @@ PlasmoidItem {
 
                     if (root.accessToken) {
                         root.credentialsRetryCount = 0
-                        emailReader.connectSource("cat $HOME/.claude.json 2>/dev/null")
+                        emailReader.connectSource(readAccountCmd())
                         var expiresAt = oauth.expiresAt || 0
                         var isLocallyExpired = expiresAt > 0 && Date.now() >= expiresAt
                         if (isLocallyExpired && Plasmoid.configuration.autoRefreshSession && !root.autoRefreshAttempted) {
@@ -382,7 +456,7 @@ PlasmoidItem {
         root.silentRefreshRunning = true
         console.log("Claude Usage: Starting silent session refresh")
         var script = Qt.resolvedUrl("../scripts/silent-refresh.sh").toString().replace("file://", "")
-        silentRefreshRunner.connectSource("sh '" + script + "'")
+        silentRefreshRunner.connectSource(claudeDirEnvPrefix() + "sh '" + script + "'")
     }
 
     // Credentials retry for transient read failures (e.g. right after boot)
@@ -395,7 +469,7 @@ PlasmoidItem {
         repeat: false
         onTriggered: {
             console.log("Claude Usage: Retrying credentials read, attempt", root.credentialsRetryCount, "of", root.maxCredentialsRetries)
-            fileReader.connectSource("cat ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json 2>/dev/null")
+            fileReader.connectSource(readCredentialsCmd())
         }
     }
 
@@ -437,6 +511,12 @@ PlasmoidItem {
                 } catch (e) {
                     console.log("Claude Usage: account info parse error:", e)
                 }
+            } else {
+                // No account file at the configured location - drop the
+                // previous account's details instead of showing them on.
+                root.accountEmail = ""
+                root.accountTier = ""
+                updatePlanName()
             }
         }
     }
@@ -557,8 +637,8 @@ PlasmoidItem {
 
     function refreshTokenStats() {
         var today = Qt.formatDateTime(new Date(), "yyyy-MM-dd")
-        var script = "bash -c 'find ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects -name \"*.jsonl\" -newer /tmp/.claude-token-stats-marker -o -name \"*.jsonl\" 2>/dev/null | head -50 | while read f; do grep -o '\\''\"model\":\"[^\"]*\".*\"input_tokens\":[0-9]*.*\"output_tokens\":[0-9]*'\\'' \"$f\" 2>/dev/null; done | grep '\\''\"" + today + "'\\'' | sed -E '\\''s/.*\"model\":\"([^\"]*)\".*\"input_tokens\":([0-9]+).*\"output_tokens\":([0-9]+).*/\\1|\\2|\\3|0|0/'\\'' 2>/dev/null; true'"
-        tokenStatsReader.connectSource(script)
+        var script = "bash -c 'find \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects\" -name \"*.jsonl\" -newer /tmp/.claude-token-stats-marker -o -name \"*.jsonl\" 2>/dev/null | head -50 | while read f; do grep -o '\\''\"model\":\"[^\"]*\".*\"input_tokens\":[0-9]*.*\"output_tokens\":[0-9]*'\\'' \"$f\" 2>/dev/null; done | grep '\\''\"" + today + "'\\'' | sed -E '\\''s/.*\"model\":\"([^\"]*)\".*\"input_tokens\":([0-9]+).*\"output_tokens\":([0-9]+).*/\\1|\\2|\\3|0|0/'\\'' 2>/dev/null; true'"
+        tokenStatsReader.connectSource(claudeDirEnvPrefix() + script)
     }
 
     // Terminal launcher
@@ -574,7 +654,7 @@ PlasmoidItem {
     }
 
     function launchInTerminal(cmd) {
-        claudeLauncher.connectSource("bash -c 'cd $HOME && if command -v konsole >/dev/null; then konsole --hold -e env -u CLAUDECODE bash -lc \"" + cmd + "\"; elif command -v gnome-terminal >/dev/null; then gnome-terminal -- env -u CLAUDECODE bash -lc \"" + cmd + "; exec bash\"; elif command -v xfce4-terminal >/dev/null; then xfce4-terminal --hold -e \"env -u CLAUDECODE bash -lc \\\"" + cmd + "\\\"\"; elif command -v xterm >/dev/null; then xterm -hold -e env -u CLAUDECODE bash -lc \"" + cmd + "\"; fi &'")
+        claudeLauncher.connectSource(claudeDirEnvPrefix() + "bash -c 'cd $HOME && if command -v konsole >/dev/null; then konsole --hold -e env -u CLAUDECODE bash -lc \"" + cmd + "\"; elif command -v gnome-terminal >/dev/null; then gnome-terminal -- env -u CLAUDECODE bash -lc \"" + cmd + "; exec bash\"; elif command -v xfce4-terminal >/dev/null; then xfce4-terminal --hold -e \"env -u CLAUDECODE bash -lc \\\"" + cmd + "\\\"\"; elif command -v xterm >/dev/null; then xterm -hold -e env -u CLAUDECODE bash -lc \"" + cmd + "\"; fi &'")
     }
 
     function loadCredentials() {
@@ -596,7 +676,7 @@ PlasmoidItem {
             root.baseUrl = ""
             root.apiKey = ""
             console.log("Claude Usage: No base URL configured, reading credentials file")
-            fileReader.connectSource("cat ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json 2>/dev/null")
+            fileReader.connectSource(readCredentialsCmd())
         }
     }
 
@@ -639,7 +719,7 @@ PlasmoidItem {
 
         if (!root.baseUrl) {
             var script = Qt.resolvedUrl("../scripts/fetch_usage.sh").toString().replace("file://", "")
-            usageFetcher.connectSource("sh '" + script + "'")
+            usageFetcher.connectSource("sh '" + script + "' " + credentialsFileExpr())
             return
         }
 
@@ -1718,7 +1798,7 @@ PlasmoidItem {
         iconInstaller.connectSource("bash -c 'ICON_DIR=${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/scalable/apps && mkdir -p $ICON_DIR && cp \"" + iconSource + "\" $ICON_DIR/claude-usage-widget.svg && chmod 644 $ICON_DIR/claude-usage-widget.svg 2>/dev/null'")
         cacheReader.connectSource("cat $HOME/.local/share/claude-usage-cache.json 2>/dev/null")
         versionReader.connectSource("claude --version 2>/dev/null")
-        emailReader.connectSource("cat $HOME/.claude.json 2>/dev/null")
+        emailReader.connectSource(readAccountCmd())
         if (Plasmoid.configuration.enableUpdateCheck !== false) checkForUpdate()
         refreshTokenStats()
         loadCredentials()

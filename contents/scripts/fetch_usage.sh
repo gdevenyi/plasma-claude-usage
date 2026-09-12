@@ -4,10 +4,14 @@
 # after suspend/resume and every request dies with status 0; a subprocess
 # never inherits that state.
 #
+# Usage: fetch_usage.sh [credentials-file]
+# Falls back to $CLAUDE_CONFIG_DIR/.credentials.json, then ~/.claude, so the
+# script still works when run by hand with no argument.
+#
 # Output: response body, then a final line "<http_code> <retry_after>".
 # Prints "NOCREDS" if no access token is available.
 
-CREDS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json"
+CREDS="${1:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json}"
 
 # The credentials file also holds an mcpOAuth section, and every MCP server
 # entry there carries its own "accessToken". Scope the match to the

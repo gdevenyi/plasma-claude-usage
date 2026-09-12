@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-09-12
+
+### Added
+
+- **Credentials path** setting — point the widget at another `.credentials.json`, or at the folder containing it, when `$CLAUDE_CONFIG_DIR` is not visible to plasmashell or your credentials live elsewhere. Empty keeps the previous behaviour
+- The configured folder also drives the account file (`.claude.json`), the `projects/` token-stats scan, and the `CLAUDE_CONFIG_DIR` passed to the `claude` process started by "Open Claude" and by the silent session refresh
+- Changing the setting reloads immediately instead of waiting for the next poll
+
+### Fixed
+
+- Account e-mail and tier are now cleared when the account file is missing, instead of showing the previous account's details
+- Token-stats `find` no longer word-splits on a config folder containing spaces
+
 ## [2.3.5] - 2026-08-30
 
 ### Fixed
@@ -229,6 +242,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configurable refresh interval
 - Error handling for login issues
 
+[2.4.0]: https://github.com/izll/plasma-claude-usage/compare/v2.3.5...v2.4.0
 [2.3.5]: https://github.com/izll/plasma-claude-usage/compare/v2.3.4...v2.3.5
 [2.3.4]: https://github.com/izll/plasma-claude-usage/compare/v2.3.3...v2.3.4
 [2.3.3]: https://github.com/izll/plasma-claude-usage/compare/v2.3.2...v2.3.3
