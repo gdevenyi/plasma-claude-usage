@@ -820,6 +820,11 @@ PlasmoidItem {
     }
     readonly property bool useTimeAware: Plasmoid.configuration.useTimeAwareColors !== false
 
+    // Metrics scale as a fraction. 100% leaves every size exactly as it was;
+    // both representations derive their sizes from this single value.
+    readonly property real metricsScale: Math.max(100, Math.min(Plasmoid.configuration.metricsScale || 100, 300)) / 100
+    readonly property int classicBarHeight: Math.round(10 * metricsScale)
+
     compactRepresentation: CompactView {}
 
     // Full representation (popup) - switchable between classic and card
@@ -935,15 +940,15 @@ PlasmoidItem {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 10
-                        radius: 5
+                        height: root.classicBarHeight
+                        radius: root.classicBarHeight / 2
                         color: Kirigami.Theme.backgroundColor
                         border.color: Kirigami.Theme.disabledTextColor
                         border.width: 1
                         Rectangle {
                             width: parent.width * Math.min(root.sessionUsagePercent / 100, 1)
                             height: parent.height
-                            radius: 5
+                            radius: root.classicBarHeight / 2
                             color: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined)
                         }
                         Rectangle {
@@ -985,15 +990,15 @@ PlasmoidItem {
 
                     Rectangle {
                         Layout.fillWidth: true
-                        height: 10
-                        radius: 5
+                        height: root.classicBarHeight
+                        radius: root.classicBarHeight / 2
                         color: Kirigami.Theme.backgroundColor
                         border.color: Kirigami.Theme.disabledTextColor
                         border.width: 1
                         Rectangle {
                             width: parent.width * Math.min(root.weeklyUsagePercent / 100, 1)
                             height: parent.height
-                            radius: 5
+                            radius: root.classicBarHeight / 2
                             color: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined)
                         }
                         Rectangle {

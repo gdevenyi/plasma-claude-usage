@@ -72,8 +72,32 @@ Item {
         y: ring.height / 2 + ring.arcRadius * Math.sin(ring.markerRel * 2 * Math.PI - Math.PI / 2) - height / 2
     }
 
+    // Measures where the glyphs actually land, so the number can be centred on
+    // the ink it draws rather than on the font's bounding box. The box reserves
+    // room for descenders that digits never use, which is what pushes a
+    // box-centred number visually upwards.
+    TextMetrics {
+        id: percentMetrics
+        font: percentLabel.font
+        text: percentLabel.text
+    }
+
+    FontMetrics {
+        id: percentFont
+        font: percentLabel.font
+    }
+
     PlasmaComponents.Label {
-        anchors.centerIn: parent
+        id: percentLabel
+
+        x: ring.width / 2
+           - percentMetrics.tightBoundingRect.x
+           - percentMetrics.tightBoundingRect.width / 2
+        y: ring.height / 2
+           - percentMetrics.tightBoundingRect.y
+           - percentMetrics.tightBoundingRect.height / 2
+           - percentFont.ascent
+
         text: Math.round(ring.percent) + (ring.showPercentSign ? "%" : "")
         font.pixelSize: Math.max(8, ring.height * ring.fontScale)
         font.bold: true

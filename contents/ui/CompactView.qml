@@ -7,7 +7,47 @@ import org.kde.kirigami as Kirigami
 Item {
     id: compact
 
-    readonly property int effectiveIconSize: Plasmoid.configuration.iconSize > 0 ? Plasmoid.configuration.iconSize : Kirigami.Units.iconSizes.smallMedium
+    // In a horizontal panel the applet's height is the panel's thickness, and
+    // anything taller is clipped by the panel. Cap the metrics at what actually
+    // fits. Vertical layouts and the desktop are not capped: there the width
+    // comes from usageRow.implicitWidth, so capping by width would be a cycle.
+    readonly property int availableHeight: root.isVerticalLayout || compact.height <= 0
+        ? -1
+        : Math.max(12, compact.height)
+
+    function fitted(size) {
+        return compact.availableHeight < 0 ? size : Math.min(size, compact.availableHeight)
+    }
+
+
+    // An explicitly set icon size is taken literally -- the settings page shows
+    // it in pixels, so scaling it would make that label a lie. "Auto" means
+    // "pick something sensible", and the metrics scale is part of that.
+    readonly property int effectiveIconSize: fitted(Plasmoid.configuration.iconSize > 0
+        ? Plasmoid.configuration.iconSize
+        : Math.round(Kirigami.Units.iconSizes.smallMedium * root.metricsScale))
+
+    readonly property int ringSize: fitted(Math.round(28 * root.metricsScale))
+    // Derived from the ring's real size, not from the scale, so a panel-capped
+    // ring keeps a stroke that fits it. The stroke grows more slowly than the
+    // ring: scaling it proportionally keeps the ring looking like a magnified
+    // version of the small one, while a larger ring with a relatively finer
+    // stroke is what reads as elegant.
+    readonly property int ringLineWidth: Math.max(2, Math.round(3 + (compact.ringSize - 28) * 0.06))
+    // The number inside a ring takes a slightly larger share as the widget
+    // grows: at a bigger size there is room for it, and a panel-capped ring
+    // would otherwise keep a number sized for a 28px ring. 100% stays at 0.3.
+    readonly property real ringFontScale: Math.min(0.36, 0.3 + (root.metricsScale - 1) * 0.04)
+
+    readonly property int barWidth: Math.round(32 * root.metricsScale)
+    // Capped against the bar's own height: a number taller than roughly half
+    // the bar fills it edge to edge, and centring the font's bounding box then
+    // reads as the digits sitting too high, since digits have no descenders.
+    readonly property int barFontSize: compact.availableHeight < 0
+        ? Math.round(9 * root.metricsScale)
+        : Math.min(Math.round(9 * root.metricsScale), Math.round(compact.availableHeight * 0.5))
+    readonly property int dotSize: fitted(Math.round(10 * root.metricsScale))
+    readonly property int textFontSize: Math.round(Kirigami.Theme.defaultFont.pixelSize * root.metricsScale)
 
     Layout.minimumWidth: usageRow.implicitWidth + Kirigami.Units.largeSpacing * 2
     Layout.minimumHeight: root.isVerticalLayout ? usageRow.implicitHeight + Kirigami.Units.largeSpacing * 2 : Kirigami.Units.iconSizes.medium
@@ -72,9 +112,9 @@ Item {
 
         Rectangle {
             visible: root.showUsageStats && root.effectivePanelStyle === "text" && (Plasmoid.configuration.showSession !== false) && root.metricsVisible
-            Layout.preferredWidth: 10
-            Layout.preferredHeight: 10
-            radius: 5
+            Layout.preferredWidth: compact.dotSize
+            Layout.preferredHeight: compact.dotSize
+            radius: compact.dotSize / 2
             color: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined)
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
         }
@@ -82,7 +122,7 @@ Item {
         PlasmaComponents.Label {
             visible: root.showUsageStats && root.effectivePanelStyle === "text" && (Plasmoid.configuration.showSession !== false) && root.metricsVisible
             text: Math.round(root.sessionUsagePercent) + "%"
-            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize
+            font.pixelSize: compact.textFontSize
             font.bold: true
             color: root.useTimeAware ? root.getUsageColor(root.sessionUsagePercent, root.sessionTimePct) : Kirigami.Theme.textColor
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
@@ -92,14 +132,14 @@ Item {
             visible: root.showUsageStats && !root.isVerticalLayout && root.effectivePanelStyle === "text" && (Plasmoid.configuration.showSession !== false) && (Plasmoid.configuration.showWeekly !== false) && root.metricsVisible
             text: "|"
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.25 : root.isStale ? 0.35 : 0.5
-            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize
+            font.pixelSize: compact.textFontSize
         }
 
         Rectangle {
             visible: root.showUsageStats && root.effectivePanelStyle === "text" && (Plasmoid.configuration.showWeekly !== false) && root.metricsVisible
-            Layout.preferredWidth: 10
-            Layout.preferredHeight: 10
-            radius: 5
+            Layout.preferredWidth: compact.dotSize
+            Layout.preferredHeight: compact.dotSize
+            radius: compact.dotSize / 2
             color: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined)
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
         }
@@ -107,7 +147,7 @@ Item {
         PlasmaComponents.Label {
             visible: root.showUsageStats && root.effectivePanelStyle === "text" && (Plasmoid.configuration.showWeekly !== false) && root.metricsVisible
             text: Math.round(root.weeklyUsagePercent) + "%"
-            font.pixelSize: Kirigami.Theme.defaultFont.pixelSize
+            font.pixelSize: compact.textFontSize
             font.bold: true
             color: root.useTimeAware ? root.getUsageColor(root.weeklyUsagePercent, root.weeklyTimePct) : Kirigami.Theme.textColor
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
@@ -123,11 +163,11 @@ Item {
                     visible: !root.isVerticalLayout && ((Plasmoid.configuration.showSession !== false) || (Plasmoid.configuration.showWeekly !== false))
                     text: "|"
                     opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.25 : root.isStale ? 0.35 : 0.5
-                    font.pixelSize: Kirigami.Theme.defaultFont.pixelSize
+                    font.pixelSize: compact.textFontSize
                 }
 
                 Rectangle {
-                    width: 10; height: 10; radius: 5
+                    width: compact.dotSize; height: compact.dotSize; radius: compact.dotSize / 2
                     color: root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined)
                     opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
                     anchors.verticalCenter: parent.verticalCenter
@@ -135,7 +175,7 @@ Item {
 
                 PlasmaComponents.Label {
                     text: Math.round(modelData.percent) + "%"
-                    font.pixelSize: Kirigami.Theme.defaultFont.pixelSize
+                    font.pixelSize: compact.textFontSize
                     font.bold: true
                     color: root.useTimeAware ? root.getUsageColor(modelData.percent, root.weeklyTimePct) : Kirigami.Theme.textColor
                     opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
@@ -147,7 +187,7 @@ Item {
 
         Item {
             visible: root.showUsageStats && root.effectivePanelStyle === "bar" && (Plasmoid.configuration.showSession !== false) && root.metricsVisible
-            Layout.preferredWidth: 32
+            Layout.preferredWidth: compact.barWidth
             Layout.preferredHeight: parent.height
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
 
@@ -183,7 +223,7 @@ Item {
             PlasmaComponents.Label {
                 anchors.centerIn: parent
                 text: Math.round(root.sessionUsagePercent)
-                font.pixelSize: 9
+                font.pixelSize: compact.barFontSize
                 font.bold: true
                 color: Kirigami.Theme.textColor
                 style: Text.Outline
@@ -193,7 +233,7 @@ Item {
 
         Item {
             visible: root.showUsageStats && root.effectivePanelStyle === "bar" && (Plasmoid.configuration.showWeekly !== false) && root.metricsVisible
-            Layout.preferredWidth: 32
+            Layout.preferredWidth: compact.barWidth
             Layout.preferredHeight: parent.height
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
 
@@ -229,7 +269,7 @@ Item {
             PlasmaComponents.Label {
                 anchors.centerIn: parent
                 text: Math.round(root.weeklyUsagePercent)
-                font.pixelSize: 9
+                font.pixelSize: compact.barFontSize
                 font.bold: true
                 color: Kirigami.Theme.textColor
                 style: Text.Outline
@@ -241,7 +281,7 @@ Item {
             model: root.modelLimits
             delegate: Item {
                 visible: root.showUsageStats && root.effectivePanelStyle === "bar" && root.isModelShownInPanel(modelData.label) && root.metricsVisible
-                Layout.preferredWidth: 32
+                Layout.preferredWidth: compact.barWidth
                 Layout.preferredHeight: parent.height
                 opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
 
@@ -277,7 +317,7 @@ Item {
                 PlasmaComponents.Label {
                     anchors.centerIn: parent
                     text: Math.round(modelData.percent)
-                    font.pixelSize: 9
+                    font.pixelSize: compact.barFontSize
                     font.bold: true
                     color: Kirigami.Theme.textColor
                     style: Text.Outline
@@ -290,40 +330,40 @@ Item {
 
         UsageRing {
             visible: root.showUsageStats && root.effectivePanelStyle === "ring" && (Plasmoid.configuration.showSession !== false) && root.metricsVisible
-            Layout.preferredWidth: 28
-            Layout.preferredHeight: 28
+            Layout.preferredWidth: compact.ringSize
+            Layout.preferredHeight: compact.ringSize
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
             percent: root.sessionUsagePercent
             ringColor: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined)
             markerRel: root.useTimeAware && root.sessionTimePct >= 0 ? root.sessionTimePct / 100 : -1
-            lineWidth: 3
-            fontScale: 0.3
+            lineWidth: compact.ringLineWidth
+            fontScale: compact.ringFontScale
         }
 
         UsageRing {
             visible: root.showUsageStats && root.effectivePanelStyle === "ring" && (Plasmoid.configuration.showWeekly !== false) && root.metricsVisible
-            Layout.preferredWidth: 28
-            Layout.preferredHeight: 28
+            Layout.preferredWidth: compact.ringSize
+            Layout.preferredHeight: compact.ringSize
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
             percent: root.weeklyUsagePercent
             ringColor: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined)
             markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
-            lineWidth: 3
-            fontScale: 0.3
+            lineWidth: compact.ringLineWidth
+            fontScale: compact.ringFontScale
         }
 
         Repeater {
             model: root.modelLimits
             delegate: UsageRing {
                 visible: root.showUsageStats && root.effectivePanelStyle === "ring" && root.isModelShownInPanel(modelData.label) && root.metricsVisible
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
+                Layout.preferredWidth: compact.ringSize
+                Layout.preferredHeight: compact.ringSize
                 opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
                 percent: modelData.percent
                 ringColor: root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined)
                 markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
-                lineWidth: 3
-                fontScale: 0.3
+                lineWidth: compact.ringLineWidth
+                fontScale: compact.ringFontScale
             }
         }
 
