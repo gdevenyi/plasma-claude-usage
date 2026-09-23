@@ -103,6 +103,8 @@ PlasmoidItem {
     property real extraLimitCents: 0
     property string extraCurrency: "USD"
     property int extraDecimals: 2
+    property string extraDisabledReason: ""  // e.g. "out_of_credits"; empty when enabled or turned off by the user
+    readonly property bool extraVisible: root.extraEnabled || (root.extraDisabledReason !== "" && root.extraLimitCents > 0)
     readonly property real extraPercent: root.extraLimitCents > 0 ? root.extraUsedCents / root.extraLimitCents * 100 : 0
     property var installations: []
     property var alertedThresholds: ({})
@@ -150,6 +152,7 @@ PlasmoidItem {
                         root.extraLimitCents = cache.extraLimit || 0
                         root.extraCurrency = cache.extraCurrency || "USD"
                         root.extraDecimals = cache.extraDecimals !== undefined ? cache.extraDecimals : 2
+                        root.extraDisabledReason = cache.extraDisabledReason || ""
                         root.planName = cache.plan || ""
                         root.sessionReset = cache.sessionReset || ""
                         root.weeklyReset = cache.weeklyReset || ""
@@ -190,6 +193,7 @@ PlasmoidItem {
             extraLimit: root.extraLimitCents,
             extraCurrency: root.extraCurrency,
             extraDecimals: root.extraDecimals,
+            extraDisabledReason: root.extraDisabledReason,
             timestamp: Date.now()
         }
         var json = JSON.stringify(cache)
@@ -900,6 +904,7 @@ print(json.dumps(tot))`
                 root.extraLimitCents = extra.monthly_limit || 0
                 root.extraCurrency = extra.currency || "USD"
                 root.extraDecimals = extra.decimal_places !== undefined ? extra.decimal_places : 2
+                root.extraDisabledReason = (!extra.is_enabled && !extra.user_disabled && extra.disabled_reason) || ""
 
                 if (fiveHour.resets_at) {
                     root.sessionResetTime = new Date(fiveHour.resets_at)
@@ -1059,7 +1064,7 @@ print(json.dumps(tot))`
         })
 
         function classicCardVisible(id) {
-            if (id === "extra") return root.extraEnabled
+            if (id === "extra") return root.extraVisible
             if (id === "tokens") return root.tokenStats.length > 0 || root.modelTokens.length > 0
             if (id === "trend") return root.usageSamples.length >= 2
             if (id === "installations") return root.installations.length > 0
@@ -1324,6 +1329,13 @@ print(json.dumps(tot))`
                         radius: parent.radius
                         color: root.getUsageColor(root.extraPercent)
                     }
+                }
+
+                PlasmaComponents.Label {
+                    visible: !root.extraEnabled && root.extraDisabledReason !== ""
+                    text: i18n.tr("Disabled:") + " " + root.extraDisabledReason.replace(/_/g, " ")
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                    color: Kirigami.Theme.negativeTextColor
                 }
             }
         }
@@ -1609,7 +1621,7 @@ print(json.dumps(tot))`
                     // Dynamic classic sections via cardOrder
                     Repeater {
                         model: {
-                            void(root.extraEnabled, root.tokenStats, root.modelTokens, root.usageSamples, root.installations, root.parsedQuickLinks)
+                            void(root.extraVisible, root.tokenStats, root.modelTokens, root.usageSamples, root.installations, root.parsedQuickLinks)
                             return fullRepItem.classicCardOrder.filter(function(c) {
                                 return c.enabled && fullRepItem.classicCardComponents[c.id] !== undefined && fullRepItem.classicCardVisible(c.id)
                             })
