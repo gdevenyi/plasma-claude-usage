@@ -94,7 +94,7 @@ Item {
             case "account": return root.accountEmail !== "" || root.planName !== ""
             case "usage": return true
             case "models": return root.modelUsage.length > 0 || root.modelLimits.length > 0
-            case "extra": return root.extraEnabled
+            case "extra": return root.extraVisible
             case "tokens": return root.tokenStats.length > 0 || root.modelTokens.length > 0
             case "trend": return root.usageSamples.length >= 2
             case "installations": return root.installations.length > 0
@@ -298,7 +298,7 @@ Item {
     Component {
         id: cardExtraComp
         Rectangle {
-            visible: root.extraEnabled
+            visible: root.extraVisible
             Layout.fillWidth: true
             radius: Kirigami.Units.cornerRadius
             color: full.cardColor
@@ -328,6 +328,12 @@ Item {
                         width: parent.width * Math.min(root.extraPercent / 100, 1); height: parent.height; radius: parent.radius
                         color: root.getUsageColor(root.extraPercent)
                     }
+                }
+                PlasmaComponents.Label {
+                    visible: !root.extraEnabled && root.extraDisabledReason !== ""
+                    text: i18n.tr("Disabled:") + " " + root.extraDisabledReason.replace(/_/g, " ")
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                    color: Kirigami.Theme.negativeTextColor
                 }
             }
         }
