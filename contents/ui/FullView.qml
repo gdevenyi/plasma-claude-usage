@@ -196,7 +196,7 @@ Item {
                     }
                     PlasmaComponents.Label {
                         Layout.alignment: Qt.AlignHCenter
-                        text: i18n.tr("Session (5hr)")
+                        text: i18n.tr("Session (5hr)") + (root.sessionActive ? " ●" : "")
                         font.bold: true; font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     }
                     PlasmaComponents.Label {
@@ -234,7 +234,7 @@ Item {
                     }
                     PlasmaComponents.Label {
                         Layout.alignment: Qt.AlignHCenter
-                        text: i18n.tr("Weekly (7day)")
+                        text: i18n.tr("Weekly (7day)") + (root.weeklyActive ? " ●" : "")
                         font.bold: true; font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     }
                     PlasmaComponents.Label {
@@ -276,7 +276,7 @@ Item {
                     model: root.modelUsage.length > 0 ? root.modelUsage : root.modelLimits
                     delegate: ModelRow {
                         required property var modelData
-                        label: root.modelUsage.length > 0 ? modelData.name : modelData.label
+                        label: root.modelUsage.length > 0 ? modelData.name : modelData.label + (modelData.isActive ? " ●" : "")
                         percent: modelData.percent
                         barColor: (root.modelUsage.length > 0 && modelData.key === "fable")
                             ? "#D97757" : root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined, modelData.severity)

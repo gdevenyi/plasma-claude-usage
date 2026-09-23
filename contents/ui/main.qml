@@ -93,6 +93,8 @@ PlasmoidItem {
     property var tokenStats: []
     property string sessionSeverity: ""  // server-side level from the limits array, e.g. "normal"
     property string weeklySeverity: ""
+    property bool sessionActive: false  // is_active: the limit that binds right now
+    property bool weeklyActive: false
     property var weeklyBreakdown: []  // [{name, percent}] - share of weekly usage per product (Claude Code, Chats, ...)
     property var modelTokens: []  // [{name, tokens, share}] - local per-model tokens in the weekly window
     readonly property var pieColors: ["#D97757", "#6C9BD1", "#7FB069", "#B983D8", "#E0C060", "#909090"]
@@ -152,6 +154,8 @@ PlasmoidItem {
                         root.weeklyBreakdown = cache.breakdown || []
                         root.sessionSeverity = cache.sessionSeverity || ""
                         root.weeklySeverity = cache.weeklySeverity || ""
+                        root.sessionActive = cache.sessionActive || false
+                        root.weeklyActive = cache.weeklyActive || false
                         root.usageSamples = cache.samples || []
                         root.extraEnabled = cache.extraEnabled || false
                         root.extraUsedCents = cache.extraUsed || 0
@@ -196,6 +200,8 @@ PlasmoidItem {
             breakdown: root.weeklyBreakdown,
             sessionSeverity: root.sessionSeverity,
             weeklySeverity: root.weeklySeverity,
+            sessionActive: root.sessionActive,
+            weeklyActive: root.weeklyActive,
             samples: root.usageSamples,
             extraEnabled: root.extraEnabled,
             extraUsed: root.extraUsedCents,
@@ -873,14 +879,16 @@ print(json.dumps(tot))`
                 var limits = []
                 root.sessionSeverity = ""
                 root.weeklySeverity = ""
+                root.sessionActive = false
+                root.weeklyActive = false
                 if (data.limits && data.limits.length > 0) {
                     for (var i = 0; i < data.limits.length; i++) {
                         var entry = data.limits[i]
-                        if (entry.kind === "session") { root.sessionSeverity = entry.severity || ""; continue }
-                        if (entry.kind === "weekly_all") { root.weeklySeverity = entry.severity || ""; continue }
+                        if (entry.kind === "session") { root.sessionSeverity = entry.severity || ""; root.sessionActive = !!entry.is_active; continue }
+                        if (entry.kind === "weekly_all") { root.weeklySeverity = entry.severity || ""; root.weeklyActive = !!entry.is_active; continue }
                         var scope = entry.scope || {}
                         var label = (scope.model && scope.model.display_name) || scope.surface || entry.kind
-                        limits.push({ label: label, percent: entry.percent || 0, severity: entry.severity || "" })
+                        limits.push({ label: label, percent: entry.percent || 0, severity: entry.severity || "", isActive: !!entry.is_active })
                     }
                 } else {
                     if (data.seven_day_sonnet) limits.push({ label: "Sonnet", percent: data.seven_day_sonnet.utilization || 0 })
@@ -1158,7 +1166,7 @@ print(json.dumps(tot))`
                     RowLayout {
                         Layout.fillWidth: true
                         PlasmaComponents.Label {
-                            text: i18n.tr("Session (5hr)")
+                            text: i18n.tr("Session (5hr)") + (root.sessionActive ? " ●" : "")
                             font.bold: true
                         }
                         Item { Layout.fillWidth: true }
@@ -1208,7 +1216,7 @@ print(json.dumps(tot))`
                     RowLayout {
                         Layout.fillWidth: true
                         PlasmaComponents.Label {
-                            text: i18n.tr("Weekly (7day)")
+                            text: i18n.tr("Weekly (7day)") + (root.weeklyActive ? " ●" : "")
                             font.bold: true
                         }
                         Item { Layout.fillWidth: true }
@@ -1272,7 +1280,7 @@ print(json.dumps(tot))`
                         Layout.fillWidth: true
 
                         PlasmaComponents.Label {
-                            text: modelData.label
+                            text: modelData.label + (modelData.isActive ? " ●" : "")
                         }
                         Item { Layout.fillWidth: true }
                         Rectangle {
