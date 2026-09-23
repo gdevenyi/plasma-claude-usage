@@ -317,7 +317,7 @@ Item {
                 }
                 RowLayout {
                     Layout.fillWidth: true
-                    PlasmaComponents.Label { text: root.formatDollars(root.extraUsedCents) + " / " + root.formatDollars(root.extraLimitCents) + " " + i18n.tr("spent") }
+                    PlasmaComponents.Label { text: root.formatMoney(root.extraUsedCents) + " / " + root.formatMoney(root.extraLimitCents) + " " + i18n.tr("spent") }
                     Item { Layout.fillWidth: true }
                     PlasmaComponents.Label { text: Math.round(root.extraPercent) + "%"; font.bold: true; color: root.getUsageColor(root.extraPercent) }
                 }

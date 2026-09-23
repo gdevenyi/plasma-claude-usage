@@ -101,6 +101,8 @@ PlasmoidItem {
     property bool extraEnabled: false
     property real extraUsedCents: 0
     property real extraLimitCents: 0
+    property string extraCurrency: "USD"
+    property int extraDecimals: 2
     readonly property real extraPercent: root.extraLimitCents > 0 ? root.extraUsedCents / root.extraLimitCents * 100 : 0
     property var installations: []
     property var alertedThresholds: ({})
@@ -146,6 +148,8 @@ PlasmoidItem {
                         root.extraEnabled = cache.extraEnabled || false
                         root.extraUsedCents = cache.extraUsed || 0
                         root.extraLimitCents = cache.extraLimit || 0
+                        root.extraCurrency = cache.extraCurrency || "USD"
+                        root.extraDecimals = cache.extraDecimals !== undefined ? cache.extraDecimals : 2
                         root.planName = cache.plan || ""
                         root.sessionReset = cache.sessionReset || ""
                         root.weeklyReset = cache.weeklyReset || ""
@@ -184,6 +188,8 @@ PlasmoidItem {
             extraEnabled: root.extraEnabled,
             extraUsed: root.extraUsedCents,
             extraLimit: root.extraLimitCents,
+            extraCurrency: root.extraCurrency,
+            extraDecimals: root.extraDecimals,
             timestamp: Date.now()
         }
         var json = JSON.stringify(cache)
@@ -892,6 +898,8 @@ print(json.dumps(tot))`
                 root.extraEnabled = !!extra.is_enabled && (extra.monthly_limit || 0) > 0
                 root.extraUsedCents = extra.used_credits || 0
                 root.extraLimitCents = extra.monthly_limit || 0
+                root.extraCurrency = extra.currency || "USD"
+                root.extraDecimals = extra.decimal_places !== undefined ? extra.decimal_places : 2
 
                 if (fiveHour.resets_at) {
                     root.sessionResetTime = new Date(fiveHour.resets_at)
@@ -1291,7 +1299,7 @@ print(json.dumps(tot))`
                 RowLayout {
                     Layout.fillWidth: true
                     PlasmaComponents.Label {
-                        text: root.formatDollars(root.extraUsedCents) + " / " + root.formatDollars(root.extraLimitCents) + " " + i18n.tr("spent")
+                        text: root.formatMoney(root.extraUsedCents) + " / " + root.formatMoney(root.extraLimitCents) + " " + i18n.tr("spent")
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     }
                     Item { Layout.fillWidth: true }
@@ -1739,8 +1747,10 @@ print(json.dumps(tot))`
         return Kirigami.Theme.positiveTextColor
     }
 
-    function formatDollars(cents) {
-        return "$" + (cents / 100).toFixed(2)
+    // Amounts come in minor units (cents) of the account's own currency
+    function formatMoney(minor) {
+        var value = (minor / Math.pow(10, root.extraDecimals)).toFixed(root.extraDecimals)
+        return root.extraCurrency === "USD" ? "$" + value : value + " " + root.extraCurrency
     }
 
     function checkFieldAlert(field, label, percent, timePct, thresholds) {
