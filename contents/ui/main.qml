@@ -91,6 +91,8 @@ PlasmoidItem {
     property string credsSub: ""
 
     property var tokenStats: []
+    property string sessionSeverity: ""  // server-side level from the limits array, e.g. "normal"
+    property string weeklySeverity: ""
     property var weeklyBreakdown: []  // [{name, percent}] - share of weekly usage per product (Claude Code, Chats, ...)
     property var modelTokens: []  // [{name, tokens, share}] - local per-model tokens in the weekly window
     readonly property var pieColors: ["#D97757", "#6C9BD1", "#7FB069", "#B983D8", "#E0C060", "#909090"]
@@ -159,6 +161,8 @@ PlasmoidItem {
         }
         root.modelUsage = cache.models || []
         root.weeklyBreakdown = cache.breakdown || []
+        root.sessionSeverity = cache.sessionSeverity || ""
+        root.weeklySeverity = cache.weeklySeverity || ""
         root.usageSamples = cache.samples || []
         root.extraEnabled = cache.extraEnabled || false
         root.extraUsedCents = cache.extraUsed || 0
@@ -241,6 +245,8 @@ PlasmoidItem {
             weeklyResetTs: root.weeklyResetTime ? root.weeklyResetTime.getTime() : null,
             models: root.modelUsage,
             breakdown: root.weeklyBreakdown,
+            sessionSeverity: root.sessionSeverity,
+            weeklySeverity: root.weeklySeverity,
             samples: root.usageSamples,
             extraEnabled: root.extraEnabled,
             extraUsed: root.extraUsedCents,
@@ -941,13 +947,16 @@ print(json.dumps(tot))`
 
                 // Model breakdown from limits array (newer API)
                 var limits = []
+                root.sessionSeverity = ""
+                root.weeklySeverity = ""
                 if (data.limits && data.limits.length > 0) {
                     for (var i = 0; i < data.limits.length; i++) {
                         var entry = data.limits[i]
-                        if (entry.kind === "session" || entry.kind === "weekly_all") continue
+                        if (entry.kind === "session") { root.sessionSeverity = entry.severity || ""; continue }
+                        if (entry.kind === "weekly_all") { root.weeklySeverity = entry.severity || ""; continue }
                         var scope = entry.scope || {}
                         var label = (scope.model && scope.model.display_name) || scope.surface || entry.kind
-                        limits.push({ label: label, percent: entry.percent || 0 })
+                        limits.push({ label: label, percent: entry.percent || 0, severity: entry.severity || "" })
                     }
                 } else {
                     if (data.seven_day_sonnet) limits.push({ label: "Sonnet", percent: data.seven_day_sonnet.utilization || 0 })
@@ -1233,7 +1242,7 @@ print(json.dumps(tot))`
                         Item { Layout.fillWidth: true }
                         PlasmaComponents.Label {
                             text: Math.round(root.sessionUsagePercent) + "%"
-                            color: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined)
+                            color: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined, root.sessionSeverity)
                             font.bold: true
                         }
                     }
@@ -1249,7 +1258,7 @@ print(json.dumps(tot))`
                             width: parent.width * Math.min(root.sessionUsagePercent / 100, 1)
                             height: parent.height
                             radius: root.classicBarHeight / 2
-                            color: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined)
+                            color: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined, root.sessionSeverity)
                         }
                         Rectangle {
                             visible: root.useTimeAware && root.sessionTimePct >= 0
@@ -1283,7 +1292,7 @@ print(json.dumps(tot))`
                         Item { Layout.fillWidth: true }
                         PlasmaComponents.Label {
                             text: Math.round(root.weeklyUsagePercent) + "%"
-                            color: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined)
+                            color: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined, root.weeklySeverity)
                             font.bold: true
                         }
                     }
@@ -1299,7 +1308,7 @@ print(json.dumps(tot))`
                             width: parent.width * Math.min(root.weeklyUsagePercent / 100, 1)
                             height: parent.height
                             radius: root.classicBarHeight / 2
-                            color: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined)
+                            color: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined, root.weeklySeverity)
                         }
                         Rectangle {
                             visible: root.useTimeAware && root.weeklyTimePct >= 0
@@ -1355,7 +1364,7 @@ print(json.dumps(tot))`
                                 width: parent.width * Math.min(modelData.percent / 100, 1)
                                 height: parent.height
                                 radius: parent.radius
-                                color: root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined)
+                                color: root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined, modelData.severity)
                             }
                         }
                         PlasmaComponents.Label {
@@ -1882,15 +1891,23 @@ print(json.dumps(tot))`
         return Math.max(0, Math.min(100, (periodMs - remaining) / periodMs * 100))
     }
 
-    function getUsageColor(percent, timePct) {
+    // Level 0 = ok, 1 = warn, 2 = bad. The server severity can only raise it.
+    function getUsageColor(percent, timePct, severity) {
+        var level
         if (timePct === undefined || timePct === null || timePct < 0) {
-            if (percent < 50) return Kirigami.Theme.positiveTextColor
-            if (percent < 80) return Kirigami.Theme.neutralTextColor
-            return Kirigami.Theme.negativeTextColor
+            level = percent < 50 ? 0 : (percent < 80 ? 1 : 2)
+        } else {
+            level = (percent >= 100 || percent > timePct) ? 2 : (percent > timePct * 0.75 ? 1 : 0)
         }
-        if (percent >= 100 || percent > timePct) return Kirigami.Theme.negativeTextColor
-        if (percent > timePct * 0.75) return Kirigami.Theme.neutralTextColor
-        return Kirigami.Theme.positiveTextColor
+        level = Math.max(level, severityLevel(severity))
+        return [Kirigami.Theme.positiveTextColor, Kirigami.Theme.neutralTextColor, Kirigami.Theme.negativeTextColor][level]
+    }
+
+    // ponytail: only "normal" has been seen from the API; "warning" is a guess,
+    // and any other non-normal value is treated as critical.
+    function severityLevel(severity) {
+        if (!severity || severity === "normal") return 0
+        return severity === "warning" ? 1 : 2
     }
 
     // Amounts come in minor units (cents) of the account's own currency
