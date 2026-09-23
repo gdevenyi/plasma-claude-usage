@@ -22,6 +22,7 @@ QtObject {
             "Session (5hr)": "Session (5hr)",
             "Weekly (7day)": "Weekly (7day)",
             "By Model (Weekly)": "By Model (Weekly)",
+            "By Product (Weekly)": "By Product (Weekly)",
             "Sonnet": "Sonnet",
             "Opus": "Opus",
             "Resets at:": "Resets at:",

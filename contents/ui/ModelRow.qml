@@ -16,13 +16,14 @@ RowLayout {
     property real percent: 0
     property color barColor: Kirigami.Theme.positiveTextColor
     property int barHeight: 6
+    property real labelWidth: Kirigami.Units.gridUnit * 3.5
 
     spacing: Kirigami.Units.smallSpacing
     Layout.fillWidth: true
 
     PlasmaComponents.Label {
         text: row.label
-        Layout.preferredWidth: Kirigami.Units.gridUnit * 3.5
+        Layout.preferredWidth: row.labelWidth
         elide: Text.ElideRight
     }
 

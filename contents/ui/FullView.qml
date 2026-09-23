@@ -93,7 +93,7 @@ Item {
         switch (cardId) {
             case "account": return root.accountEmail !== "" || root.planName !== ""
             case "usage": return true
-            case "models": return root.modelUsage.length > 0 || root.modelLimits.length > 0
+            case "models": return root.modelUsage.length > 0 || root.modelLimits.length > 0 || root.weeklyBreakdown.length > 0
             case "extra": return root.extraVisible
             case "tokens": return root.tokenStats.length > 0 || root.modelTokens.length > 0
             case "trend": return root.usageSamples.length >= 2
@@ -254,7 +254,7 @@ Item {
     Component {
         id: cardModelsComp
         Rectangle {
-            visible: root.modelUsage.length > 0 || root.modelLimits.length > 0
+            visible: root.modelUsage.length > 0 || root.modelLimits.length > 0 || root.weeklyBreakdown.length > 0
             Layout.fillWidth: true
             radius: Kirigami.Units.cornerRadius
             color: full.cardColor
@@ -290,6 +290,25 @@ Item {
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize - 1
                     font.italic: true; opacity: 0.45
                     Layout.fillWidth: true; wrapMode: Text.WordWrap
+                }
+
+                PlasmaComponents.Label {
+                    visible: root.weeklyBreakdown.length > 0
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize - 1; font.capitalization: Font.AllUppercase
+                    font.letterSpacing: 1.2; font.bold: true; opacity: 0.55
+                    text: i18n.tr("By Product (Weekly)")
+                }
+
+                Repeater {
+                    model: root.weeklyBreakdown
+                    delegate: ModelRow {
+                        required property var modelData
+                        label: modelData.name
+                        percent: modelData.percent
+                        barColor: Kirigami.Theme.highlightColor
+                        labelWidth: Kirigami.Units.gridUnit * 5
+                        barHeight: full.barHeight
+                    }
                 }
             }
         }
