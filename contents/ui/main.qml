@@ -977,9 +977,9 @@ PlasmoidItem {
                         Rectangle {
                             visible: root.useTimeAware && root.sessionTimePct >= 0
                             x: parent.width * Math.min(root.sessionTimePct / 100, 1) - width / 2
-                            y: -2
-                            width: 2
-                            height: parent.height + 4
+                            y: -Math.round(2 * root.metricsScale)
+                            width: Math.max(2, Math.round(2 * root.metricsScale))
+                            height: parent.height + Math.round(4 * root.metricsScale)
                             color: Kirigami.Theme.textColor
                             opacity: 0.6
                         }
@@ -1027,9 +1027,9 @@ PlasmoidItem {
                         Rectangle {
                             visible: root.useTimeAware && root.weeklyTimePct >= 0
                             x: parent.width * Math.min(root.weeklyTimePct / 100, 1) - width / 2
-                            y: -2
-                            width: 2
-                            height: parent.height + 4
+                            y: -Math.round(2 * root.metricsScale)
+                            width: Math.max(2, Math.round(2 * root.metricsScale))
+                            height: parent.height + Math.round(4 * root.metricsScale)
                             color: Kirigami.Theme.textColor
                             opacity: 0.6
                         }
@@ -1068,16 +1068,16 @@ PlasmoidItem {
                         }
                         Item { Layout.fillWidth: true }
                         Rectangle {
-                            Layout.preferredWidth: 60
-                            height: 8
-                            radius: 3
+                            Layout.preferredWidth: Math.round(60 * root.metricsScale)
+                            height: Math.round(8 * root.metricsScale)
+                            radius: height * 3 / 8
                             color: Kirigami.Theme.backgroundColor
                             border.color: Kirigami.Theme.disabledTextColor
                             border.width: 1
                             Rectangle {
                                 width: parent.width * Math.min(modelData.percent / 100, 1)
                                 height: parent.height
-                                radius: 3
+                                radius: parent.radius
                                 color: root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined)
                             }
                         }
@@ -1127,15 +1127,15 @@ PlasmoidItem {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 8
-                    radius: 3
+                    height: Math.round(8 * root.metricsScale)
+                    radius: height * 3 / 8
                     color: Kirigami.Theme.backgroundColor
                     border.color: Kirigami.Theme.disabledTextColor
                     border.width: 1
                     Rectangle {
                         width: parent.width * Math.min(root.extraPercent / 100, 1)
                         height: parent.height
-                        radius: 3
+                        radius: parent.radius
                         color: root.getUsageColor(root.extraPercent)
                     }
                 }

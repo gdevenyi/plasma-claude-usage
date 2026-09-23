@@ -325,7 +325,7 @@ Item {
                     Layout.fillWidth: true; Layout.preferredHeight: full.barHeight; radius: full.barHeight / 2
                     color: Qt.alpha(Kirigami.Theme.textColor, 0.15)
                     Rectangle {
-                        width: parent.width * Math.min(root.extraPercent / 100, 1); height: parent.height; radius: 3
+                        width: parent.width * Math.min(root.extraPercent / 100, 1); height: parent.height; radius: parent.radius
                         color: root.getUsageColor(root.extraPercent)
                     }
                 }

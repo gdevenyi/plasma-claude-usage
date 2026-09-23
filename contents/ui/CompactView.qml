@@ -1,28 +1,38 @@
 import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
+import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.kirigami as Kirigami
 
 Item {
     id: compact
 
-    // In a horizontal panel the applet's height is the panel's thickness, and
-    // anything taller is clipped by the panel. Cap the metrics at what actually
-    // fits. Vertical layouts and the desktop are not capped: there the width
-    // comes from usageRow.implicitWidth, so capping by width would be a cycle.
-    readonly property int availableHeight: root.isVerticalLayout || compact.height <= 0
-        ? -1
-        : Math.max(12, compact.height)
+    // Cap the metrics at the panel's thickness, which the panel fixes: the
+    // height in a horizontal panel, the width in a vertical one. When the
+    // widget's own layout stacks its metrics along the thick axis, each one
+    // gets half of it. Only the real panel orientation (formFactor) matters
+    // here -- the widget's layout setting says nothing about the panel. The
+    // desktop is not capped.
+    readonly property bool inHorizontalPanel: Plasmoid.formFactor === PlasmaCore.Types.Horizontal
+    readonly property bool inVerticalPanel: Plasmoid.formFactor === PlasmaCore.Types.Vertical
+    readonly property int availableHeight: {
+        if (inHorizontalPanel && compact.height > 0)
+            return Math.max(12, root.isVerticalLayout ? Math.floor(compact.height / 2) - 2 : compact.height)
+        if (inVerticalPanel && compact.width > 0)
+            return Math.max(12, root.isVerticalLayout ? compact.width - 4 : Math.floor(compact.width / 2) - 2)
+        return -1
+    }
 
     function fitted(size) {
         return compact.availableHeight < 0 ? size : Math.min(size, compact.availableHeight)
     }
 
 
-    // An explicitly set icon size is taken literally -- the settings page shows
-    // it in pixels, so scaling it would make that label a lie. "Auto" means
-    // "pick something sensible", and the metrics scale is part of that.
+    // An explicitly set icon size is not scaled -- the settings page shows it
+    // in pixels, so scaling it would make that label a lie -- but, like every
+    // metric, it is capped at the panel thickness so it can't be clipped.
+    // "Auto" means "pick something sensible", and the metrics scale is part of that.
     readonly property int effectiveIconSize: fitted(Plasmoid.configuration.iconSize > 0
         ? Plasmoid.configuration.iconSize
         : Math.round(Kirigami.Units.iconSizes.smallMedium * root.metricsScale))
@@ -47,7 +57,11 @@ Item {
         ? Math.round(9 * root.metricsScale)
         : Math.min(Math.round(9 * root.metricsScale), Math.round(compact.availableHeight * 0.5))
     readonly property int dotSize: fitted(Math.round(10 * root.metricsScale))
-    readonly property int textFontSize: Math.round(Kirigami.Theme.defaultFont.pixelSize * root.metricsScale)
+    // Capped so the text fits the panel thickness (text line height is ~1.4x the pixel size).
+    readonly property int textFontSize: compact.availableHeight < 0
+        ? Math.round(Kirigami.Theme.defaultFont.pixelSize * root.metricsScale)
+        : Math.min(Math.round(Kirigami.Theme.defaultFont.pixelSize * root.metricsScale),
+                   Math.max(Kirigami.Theme.defaultFont.pixelSize, Math.floor(compact.availableHeight / 1.4)))
 
     Layout.minimumWidth: usageRow.implicitWidth + Kirigami.Units.largeSpacing * 2
     Layout.minimumHeight: root.isVerticalLayout ? usageRow.implicitHeight + Kirigami.Units.largeSpacing * 2 : Kirigami.Units.iconSizes.medium
@@ -87,9 +101,9 @@ Item {
 
             Rectangle {
                 visible: root.hasTokenError || root.hasRateLimitError || root.hasNetworkError || root.updateAvailable
-                width: 8
-                height: 8
-                radius: 4
+                width: Math.max(8, Math.round(compact.effectiveIconSize / 3))
+                height: width
+                radius: width / 2
                 color: (root.hasTokenError || root.hasRateLimitError || root.hasNetworkError)
                     ? Kirigami.Theme.negativeTextColor
                     : "#D97757"
