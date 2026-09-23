@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Installing Claude Usage widget..."
 
+rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 cp -r "$SCRIPT_DIR/contents" "$INSTALL_DIR/"
 cp "$SCRIPT_DIR/metadata.json" "$INSTALL_DIR/"

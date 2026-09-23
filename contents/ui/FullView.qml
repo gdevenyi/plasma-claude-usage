@@ -668,7 +668,7 @@ Item {
                             font.bold: true
                         }
                         PlasmaComponents.Label {
-                            text: i18n.tr("Auto-retry in") + " " + Math.round(root.rateLimitBackoffMs / 60000) + " min"
+                            text: i18n.tr("Auto-retry in %1 min").arg(Math.max(Math.ceil(root.rateLimitBackoffMs / 60000), 1))
                             font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                             color: Kirigami.Theme.negativeTextColor
                         }
