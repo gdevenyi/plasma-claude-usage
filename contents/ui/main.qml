@@ -95,6 +95,8 @@ PlasmoidItem {
     property string weeklySeverity: ""
     property bool sessionActive: false  // is_active: the limit that binds right now
     property bool weeklyActive: false
+    property var modelCatalog: []  // [{id, name}] from GET /v1/models, newest first
+    property double modelCatalogFetchedAt: 0
     property var weeklyBreakdown: []  // [{name, percent}] - share of weekly usage per product (Claude Code, Chats, ...)
     property var modelTokens: []  // [{name, tokens, share}] - local per-model tokens in the weekly window
     readonly property var pieColors: ["#D97757", "#6C9BD1", "#7FB069", "#B983D8", "#E0C060", "#909090"]
@@ -152,6 +154,8 @@ PlasmoidItem {
                         }
                         root.modelUsage = cache.models || []
                         root.weeklyBreakdown = cache.breakdown || []
+                        root.modelCatalog = cache.modelCatalog || []
+                        root.modelCatalogFetchedAt = cache.modelCatalogFetchedAt || 0
                         root.sessionSeverity = cache.sessionSeverity || ""
                         root.weeklySeverity = cache.weeklySeverity || ""
                         root.sessionActive = cache.sessionActive || false
@@ -198,6 +202,8 @@ PlasmoidItem {
             weeklyResetTs: root.weeklyResetTime ? root.weeklyResetTime.getTime() : null,
             models: root.modelUsage,
             breakdown: root.weeklyBreakdown,
+            modelCatalog: root.modelCatalog,
+            modelCatalogFetchedAt: root.modelCatalogFetchedAt,
             sessionSeverity: root.sessionSeverity,
             weeklySeverity: root.weeklySeverity,
             sessionActive: root.sessionActive,
@@ -830,6 +836,36 @@ print(json.dumps(tot))`
         }
     }
 
+    // Official model names from the Models API (works with the OAuth token)
+    Plasma5Support.DataSource {
+        id: modelsFetcher
+        engine: "executable"
+        connectedSources: []
+
+        onNewData: function(sourceName, data) {
+            disconnectSource(sourceName)
+            var stdout = data["stdout"] || ""
+            var idx = stdout.lastIndexOf("\n")
+            if (idx < 0 || parseInt(stdout.substring(idx + 1)) !== 200) return
+            try {
+                var list = JSON.parse(stdout.substring(0, idx)).data || []
+                root.modelCatalog = list.map(function(m) {
+                    return { id: m.id, name: (m.display_name || m.id).replace(/^Claude /, "") }
+                })
+                root.modelCatalogFetchedAt = Date.now()
+                saveCache()
+                refreshTokenStats()  // re-label token stats and the pie with the new names
+            } catch (e) {
+                console.log("Claude Usage: models parse error:", e)
+            }
+        }
+    }
+
+    function fetchModelCatalog() {
+        var script = Qt.resolvedUrl("../scripts/fetch_usage.sh").toString().replace("file://", "")
+        modelsFetcher.connectSource("sh '" + script + "' " + credentialsFileExpr() + " 'v1/models?limit=1000'")
+    }
+
     function fetchUsageFromApi(force) {
         var now = Date.now()
         if (!force && root.lastFetchTime > 0 && (now - root.lastFetchTime) < root.minFetchIntervalMs) {
@@ -941,6 +977,7 @@ print(json.dumps(tot))`
                     root.weeklyReset = Qt.formatDateTime(root.weeklyResetTime, "MMM d, hh:mm")
                 }
                 scanModelUsage()
+                if (!root.baseUrl && Date.now() - root.modelCatalogFetchedAt > 86400000) fetchModelCatalog()
 
                 root.lastUpdate = Qt.formatTime(new Date(), "hh:mm:ss")
                 root.lastSuccessTime = Date.now()
@@ -1907,6 +1944,9 @@ print(json.dumps(tot))`
     }
 
     function prettyModelName(id) {
+        for (var i = 0; i < root.modelCatalog.length; i++) {
+            if (root.modelCatalog[i].id === id) return root.modelCatalog[i].name
+        }
         var m = id.match(/(fable|opus|sonnet|haiku)[-_ ]?(\d+(?:[.-]\d+)?)?/i)
         if (!m) return id
         var family = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase()
@@ -1922,6 +1962,10 @@ print(json.dumps(tot))`
     }
 
     function modelDisplayName(key) {
+        // Newest catalog model of this family, e.g. "fable" -> "Fable 5.1"
+        for (var i = 0; i < root.modelCatalog.length; i++) {
+            if (root.modelCatalog[i].id.indexOf("-" + key + "-") !== -1) return root.modelCatalog[i].name
+        }
         if (key === "fable") return "Fable 5"
         if (key === "sonnet") return i18n.tr("Sonnet")
         if (key === "opus") return i18n.tr("Opus")

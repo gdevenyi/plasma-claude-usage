@@ -4,7 +4,8 @@
 # after suspend/resume and every request dies with status 0; a subprocess
 # never inherits that state.
 #
-# Usage: fetch_usage.sh [credentials-file]
+# Usage: fetch_usage.sh [credentials-file] [api-path]
+# api-path defaults to api/oauth/usage; the widget also uses v1/models.
 # Falls back to $CLAUDE_CONFIG_DIR/.credentials.json, then ~/.claude, so the
 # script still works when run by hand with no argument.
 #
@@ -12,6 +13,7 @@
 # Prints "NOCREDS" if no access token is available.
 
 CREDS="${1:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json}"
+API_PATH="${2:-api/oauth/usage}"
 
 # The credentials file also holds an mcpOAuth section, and every MCP server
 # entry there carries its own "accessToken". Scope the match to the
@@ -49,6 +51,7 @@ printf 'Authorization: Bearer %s\n' "$TOKEN" | curl -sS \
     --max-time 15 \
     -H @- \
     -H "anthropic-beta: oauth-2025-04-20" \
+    -H "anthropic-version: 2023-06-01" \
     -H "Content-Type: application/json" \
     -w '\n%{http_code} %header{retry-after}' \
-    "https://api.anthropic.com/api/oauth/usage" 2>/dev/null
+    "https://api.anthropic.com/$API_PATH" 2>/dev/null
