@@ -8,7 +8,7 @@ This is a KDE Plasma 6 widget that displays Claude Code usage statistics (sessio
 
 The widget is **pure QML** with no external dependencies:
 
-1. **Credentials reading**: Uses `Plasma5Support.DataSource` with "executable" engine to run `cat $HOME/.claude/.credentials.json`
+1. **Credentials reading**: Uses `Plasma5Support.DataSource` with "executable" engine to `cat` the credentials file. Never hardcode that path — build it with the helpers in `main.qml` (`credentialsFileExpr()`, `claudeDirExpr()`, `claudeDirEnvPrefix()`, `readCredentialsCmd()`, `readAccountCmd()`), which resolve the `credentialsPath` setting and fall back to `${CLAUDE_CONFIG_DIR:-$HOME/.claude}`. User-supplied paths must go through `shQuotePath()`.
 2. **API calls**: Uses QML's built-in `XMLHttpRequest` to call Anthropic's OAuth usage API
 3. **UI**: Standard Plasma/Kirigami components
 
@@ -53,7 +53,11 @@ The `anthropic-beta: oauth-2025-04-20` header is **required** - without it the A
 
 ## Credentials Location
 
-Claude Code stores OAuth credentials in `~/.claude/.credentials.json`:
+Claude Code stores OAuth credentials in `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/.credentials.json`. The `credentialsPath` setting overrides this: a value ending in `.json` is the file, anything else is the config folder. The resolved folder also drives the account file, the `projects/` token-stats scan, and the `CLAUDE_CONFIG_DIR` handed to the `claude` process the widget launches.
+
+Note the asymmetry in Claude Code's own layout: by default `.claude.json` (account info) is a **sibling** of the config folder (`~/.claude.json`), but with `CLAUDE_CONFIG_DIR` set it lives **inside** it — `readAccountCmd()` tries the folder first and falls back to `$HOME`.
+
+The file looks like:
 
 ```json
 {
@@ -84,6 +88,7 @@ Claude Code stores OAuth credentials in `~/.claude/.credentials.json`:
 - **StandardPaths not working**: Use `$HOME` environment variable instead
 - **API returns 401**: Make sure `anthropic-beta` header is included
 - **Widget not updating**: Check if credentials file exists and is readable
+- **Token stats empty**: `refreshTokenStats()` passes `-newer /tmp/.claude-token-stats-marker` to `find`, but nothing ever creates that marker, so `find` aborts and prints nothing
 
 ## Publishing
 

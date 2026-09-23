@@ -31,6 +31,7 @@ KCM.SimpleKCM {
     property bool cfg_enableUpdateCheck
     property bool cfg_showInstallations
     property string cfg_cardOrder
+    property string cfg_credentialsPath
     property string cfg_baseUrl
     property string cfg_apiKey
     property bool cfg_autoRefreshSession
@@ -608,6 +609,24 @@ KCM.SimpleKCM {
             Kirigami.FormData.label: tr("Authentication")
         }
 
+        QQC2.TextField {
+            id: credentialsPathField
+            Kirigami.FormData.label: tr("Credentials path:")
+            placeholderText: "~/.claude/.credentials.json"
+            text: cfg_credentialsPath
+            onTextChanged: cfg_credentialsPath = text
+            Layout.fillWidth: true
+        }
+
+        QQC2.Label {
+            text: tr("Full path to .credentials.json, or the folder containing it. The same folder is used for account info and token stats. Leave empty to use $CLAUDE_CONFIG_DIR, or ~/.claude when it is not set.")
+            font.italic: true
+            opacity: 0.7
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 20
+        }
+
         QQC2.CheckBox {
             Kirigami.FormData.label: tr("Session refresh:")
             text: tr("Automatically refresh expired session")
@@ -639,7 +658,7 @@ KCM.SimpleKCM {
         }
 
         QQC2.Label {
-            text: tr("Leave empty to use ~/.claude/.credentials.json (default)")
+            text: tr("Leave empty to use the credentials file (default)")
             font.italic: true
             opacity: 0.7
             Layout.fillWidth: true

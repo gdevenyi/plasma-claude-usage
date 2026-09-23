@@ -21,6 +21,7 @@ A KDE Plasma 6 widget that displays your Claude Code usage statistics in the tas
 - **Stale Detection**: Widget dims when data is outdated
 - **Error Handling**: Clear messages when not logged in, token expired, or rate limited
 - **Custom API Support**: Optional proxy/gateway with custom base URL and API key
+- **Custom Credentials Location**: Point the widget at another `.credentials.json` or Claude config folder
 - **Configurable Background Opacity**: Adjustable transparency for desktop placement
 - **15 Languages**: EN, HU, DE, FR, ES, IT, PT, RU, PL, NL, TR, JA, KO, ZH-CN, ZH-TW
 - **No Dependencies**: Pure QML, no Python or external tools required
@@ -64,11 +65,25 @@ kpackagetool6 -t Plasma/Applet -i .
 
 Right-click the widget and select **Configure...** to open the settings.
 
+### Credentials Location (optional)
+
+By default the widget reads your OAuth credentials from `$CLAUDE_CONFIG_DIR/.credentials.json`, falling back to `~/.claude/.credentials.json` when that variable is not set — no configuration needed.
+
+Because plasmashell does not inherit your shell environment, `$CLAUDE_CONFIG_DIR` is only visible to the widget if it was exported before your session started. If it wasn't, or if you keep your credentials somewhere else entirely, set the path explicitly:
+
+| Setting | Description |
+|---|---|
+| **Credentials path** | Either the file itself, e.g. `~/work/.credentials.json`, or the folder that contains it, e.g. `~/work` |
+
+A value ending in `.json` is treated as the file; anything else is treated as the Claude config folder and `/.credentials.json` is appended. A leading `~` is expanded; `$VARIABLES` inside the value are not.
+
+That same folder is also used for the account file (`.claude.json`, for your e-mail address and plan) and for the `projects/` scan behind today's token stats, and it is passed as `CLAUDE_CONFIG_DIR` to the `claude` process started by the **Open Claude** button and by the silent session refresh — so pointing the widget at a second account moves the whole popup to that account, not just the token.
+
+Leave the field empty to go back to the default behaviour.
+
 ### Custom API Base URL (optional)
 
-By default the widget reads your OAuth credentials from `~/.claude/.credentials.json` and calls `https://api.anthropic.com` directly — no configuration needed.
-
-If you use a custom API proxy or gateway, you can override this:
+If you use a custom API proxy or gateway, the widget can skip the credentials file entirely and call your endpoint with an API key instead.
 
 | Setting | Description |
 |---|---|
