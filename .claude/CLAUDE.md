@@ -43,13 +43,25 @@ The `anthropic-beta: oauth-2025-04-20` header is **required** - without it the A
     "utilization": 89.0,
     "resets_at": "2025-12-01T19:00:00+00:00"
   },
-  "seven_day_sonnet": {
-    "utilization": 31.0,
-    "resets_at": "..."
-  },
-  "seven_day_opus": null
+  "seven_day_sonnet": null,
+  "seven_day_opus": null,
+  "limits": [
+    { "kind": "session", "group": "session", "percent": 42, "resets_at": "...", "scope": null },
+    { "kind": "weekly_all", "group": "weekly", "percent": 28, "resets_at": "...", "scope": null },
+    {
+      "kind": "weekly_scoped",
+      "group": "weekly",
+      "percent": 4,
+      "resets_at": "...",
+      "scope": { "model": { "id": null, "display_name": "Fable" }, "surface": null }
+    }
+  ]
 }
 ```
+
+The legacy `seven_day_sonnet`/`seven_day_opus` fields are null as of mid-2026; per-model
+limits now come from the `limits` array (entries with `scope.model`). The widget parses
+`limits` first and falls back to the legacy fields.
 
 ## Credentials Location
 
