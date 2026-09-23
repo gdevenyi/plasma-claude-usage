@@ -17,6 +17,7 @@ RowLayout {
     property color barColor: Kirigami.Theme.positiveTextColor
     property int barHeight: 6
     property real labelWidth: Kirigami.Units.gridUnit * 3.5
+    property string note: ""  // optional small text after the percent, e.g. a reset countdown
 
     spacing: Kirigami.Units.smallSpacing
     Layout.fillWidth: true
@@ -46,5 +47,12 @@ RowLayout {
         font.bold: true
         Layout.preferredWidth: Kirigami.Units.gridUnit * 2
         horizontalAlignment: Text.AlignRight
+    }
+
+    PlasmaComponents.Label {
+        visible: row.note !== ""
+        text: row.note
+        font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+        opacity: 0.55
     }
 }
