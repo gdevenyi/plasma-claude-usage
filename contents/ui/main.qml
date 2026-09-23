@@ -91,6 +91,7 @@ PlasmoidItem {
     property string credsSub: ""
 
     property var tokenStats: []
+    property var weeklyBreakdown: []  // [{name, percent}] - share of weekly usage per product (Claude Code, Chats, ...)
     property var modelTokens: []  // [{name, tokens, share}] - local per-model tokens in the weekly window
     readonly property var pieColors: ["#D97757", "#6C9BD1", "#7FB069", "#B983D8", "#E0C060", "#909090"]
 
@@ -146,6 +147,7 @@ PlasmoidItem {
                             root.modelLimits = legacyLimits
                         }
                         root.modelUsage = cache.models || []
+                        root.weeklyBreakdown = cache.breakdown || []
                         root.usageSamples = cache.samples || []
                         root.extraEnabled = cache.extraEnabled || false
                         root.extraUsedCents = cache.extraUsed || 0
@@ -187,6 +189,7 @@ PlasmoidItem {
             sessionResetTs: root.sessionResetTime ? root.sessionResetTime.getTime() : null,
             weeklyResetTs: root.weeklyResetTime ? root.weeklyResetTime.getTime() : null,
             models: root.modelUsage,
+            breakdown: root.weeklyBreakdown,
             samples: root.usageSamples,
             extraEnabled: root.extraEnabled,
             extraUsed: root.extraUsedCents,
@@ -892,6 +895,11 @@ print(json.dumps(tot))`
                 }
                 root.modelUsage = sortModels(models, "key")
 
+                // Share of weekly usage per product; server-side, so includes web/desktop
+                var rows = (data.seven_day_breakdown && data.seven_day_breakdown.rows) || []
+                root.weeklyBreakdown = rows.filter(function(r) { return r.percent > 0 })
+                    .map(function(r) { return { name: r.display_name || r.key, percent: r.percent } })
+
                 root.hasSonnetData = !!data.seven_day_sonnet
                 root.hasOpusData = !!data.seven_day_opus
                 root.sonnetWeeklyPercent = root.hasSonnetData ? (data.seven_day_sonnet.utilization || 0) : 0
@@ -1286,6 +1294,25 @@ print(json.dumps(tot))`
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                     color: Kirigami.Theme.disabledTextColor
                     font.italic: true
+                }
+
+                PlasmaComponents.Label {
+                    visible: root.weeklyBreakdown.length > 0
+                    text: i18n.tr("By Product (Weekly)")
+                    font.bold: true
+                    font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                }
+
+                Repeater {
+                    model: root.weeklyBreakdown
+                    ModelRow {
+                        required property var modelData
+                        label: modelData.name
+                        percent: modelData.percent
+                        barColor: Kirigami.Theme.highlightColor
+                        labelWidth: Kirigami.Units.gridUnit * 5
+                        barHeight: Math.round(8 * root.metricsScale)
+                    }
                 }
             }
         }
