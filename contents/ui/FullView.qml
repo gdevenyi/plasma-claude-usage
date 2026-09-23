@@ -43,11 +43,23 @@ Item {
         return text
     }
 
-    Layout.minimumWidth: Kirigami.Units.gridUnit * 19
-    Layout.preferredWidth: Kirigami.Units.gridUnit * 21
+    // Widen only when the two rings stop fitting side by side. Scaling the
+    // width by the setting outright made the popup absurdly wide well before
+    // anything actually needed the room -- the text and bars never grow
+    // sideways, only the rings do.
+    Layout.minimumWidth: Math.max(Kirigami.Units.gridUnit * 19,
+                                  full.ringSize * 2 + Kirigami.Units.gridUnit * 4)
+    Layout.preferredWidth: Math.max(Kirigami.Units.gridUnit * 21,
+                                    full.ringSize * 2 + Kirigami.Units.gridUnit * 6)
     readonly property bool scrollable: Plasmoid.configuration.scrollableContent === true
     Layout.minimumHeight: full.scrollable ? Kirigami.Units.gridUnit * 4 : (mainColumn.implicitHeight + Kirigami.Units.smallSpacing * 2)
     Layout.preferredHeight: mainColumn.implicitHeight + Kirigami.Units.smallSpacing * 2
+
+    readonly property int ringSize: Math.round(56 * root.metricsScale)
+    // Same reasoning as the panel: the stroke grows more slowly than the ring,
+    // so a larger ring reads as finer rather than merely magnified.
+    readonly property int ringLineWidth: Math.max(3, Math.round(5 + (full.ringSize - 56) * 0.06))
+    readonly property int barHeight: Math.round(6 * root.metricsScale)
 
     property var cardOrder: []
 
@@ -176,11 +188,11 @@ Item {
 
                     UsageRing {
                         Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: 56; Layout.preferredHeight: 56
+                        Layout.preferredWidth: full.ringSize; Layout.preferredHeight: full.ringSize
                         percent: root.sessionUsagePercent
                         ringColor: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined)
                         markerRel: root.useTimeAware && root.sessionTimePct >= 0 ? root.sessionTimePct / 100 : -1
-                        lineWidth: 5; showPercentSign: true; fontScale: 0.22
+                        lineWidth: full.ringLineWidth; showPercentSign: true; fontScale: 0.22
                     }
                     PlasmaComponents.Label {
                         Layout.alignment: Qt.AlignHCenter
@@ -214,11 +226,11 @@ Item {
 
                     UsageRing {
                         Layout.alignment: Qt.AlignHCenter
-                        Layout.preferredWidth: 56; Layout.preferredHeight: 56
+                        Layout.preferredWidth: full.ringSize; Layout.preferredHeight: full.ringSize
                         percent: root.weeklyUsagePercent
                         ringColor: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined)
                         markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
-                        lineWidth: 5; showPercentSign: true; fontScale: 0.22
+                        lineWidth: full.ringLineWidth; showPercentSign: true; fontScale: 0.22
                     }
                     PlasmaComponents.Label {
                         Layout.alignment: Qt.AlignHCenter
@@ -268,6 +280,7 @@ Item {
                         percent: modelData.percent
                         barColor: (root.modelUsage.length > 0 && modelData.key === "fable")
                             ? "#D97757" : root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined)
+                        barHeight: full.barHeight
                     }
                 }
 
@@ -309,7 +322,7 @@ Item {
                     PlasmaComponents.Label { text: Math.round(root.extraPercent) + "%"; font.bold: true; color: root.getUsageColor(root.extraPercent) }
                 }
                 Rectangle {
-                    Layout.fillWidth: true; Layout.preferredHeight: 6; radius: 3
+                    Layout.fillWidth: true; Layout.preferredHeight: full.barHeight; radius: full.barHeight / 2
                     color: Qt.alpha(Kirigami.Theme.textColor, 0.15)
                     Rectangle {
                         width: parent.width * Math.min(root.extraPercent / 100, 1); height: parent.height; radius: 3

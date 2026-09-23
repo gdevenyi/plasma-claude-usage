@@ -26,6 +26,10 @@
             <label>Panel icon size (0 = auto)</label>
             <default>0</default>
         </entry>
+        <entry name="metricsScale" type="Int">
+            <label>Metrics size as a percentage (100 = default)</label>
+            <default>100</default>
+        </entry>
         <entry name="panelStyle" type="String">
             <label>Panel display style (text or circular)</label>
             <default>ring</default>

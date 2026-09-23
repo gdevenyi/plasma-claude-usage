@@ -38,6 +38,7 @@ KCM.SimpleKCM {
     property bool cfg_useTimeAwareColors
     property bool cfg_scrollableContent
     property int cfg_iconSize
+    property int cfg_metricsScale
 
     property var availableModels: []
     property var quickLinksModel: []
@@ -351,20 +352,60 @@ KCM.SimpleKCM {
             model: ["Claude", "Tile"]
             currentIndex: (cfg_panelIcon || "claude") === "tile" ? 1 : 0
             onCurrentIndexChanged: cfg_panelIcon = currentIndex === 1 ? "tile" : "claude"
+            enabled: cfg_showIcon
         }
 
         RowLayout {
             Kirigami.FormData.label: tr("Icon size:")
             enabled: cfg_showIcon
 
-            QQC2.SpinBox {
+            QQC2.Slider {
+                id: iconSizeSlider
                 from: 0
                 to: 64
                 stepSize: 2
+                snapMode: QQC2.Slider.SnapAlways
                 value: cfg_iconSize
-                onValueChanged: cfg_iconSize = value
-                textFromValue: function(value) { return value === 0 ? tr("Auto") : value + "px" }
-                valueFromText: function(text) { return parseInt(text) || 0 }
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 10
+
+                onValueChanged: {
+                    if (cfg_iconSize !== value) {
+                        cfg_iconSize = value
+                    }
+                }
+            }
+
+            QQC2.Label {
+                text: cfg_iconSize === 0 ? tr("Auto") : cfg_iconSize + "px"
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 3
+            }
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: tr("Metrics size (panel and popup):")
+
+            QQC2.Slider {
+                id: metricsScaleSlider
+                from: 100
+                to: 300
+                stepSize: 10
+                snapMode: QQC2.Slider.SnapAlways
+                value: cfg_metricsScale
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 10
+
+                // Not onMoved: that signal fires only while dragging the handle,
+                // so scrolling the wheel or using the arrow keys would move the
+                // slider without ever marking the page dirty.
+                onValueChanged: {
+                    if (cfg_metricsScale !== value) {
+                        cfg_metricsScale = value
+                    }
+                }
+            }
+
+            QQC2.Label {
+                text: Math.round(cfg_metricsScale) + "%"
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 3
             }
         }
 

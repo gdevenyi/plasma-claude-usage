@@ -15,6 +15,7 @@ RowLayout {
     property string label: ""
     property real percent: 0
     property color barColor: Kirigami.Theme.positiveTextColor
+    property int barHeight: 6
 
     spacing: Kirigami.Units.smallSpacing
     Layout.fillWidth: true
@@ -27,14 +28,14 @@ RowLayout {
 
     Rectangle {
         Layout.fillWidth: true
-        Layout.preferredHeight: 6
-        radius: 3
+        Layout.preferredHeight: row.barHeight
+        radius: row.barHeight / 2
         color: Qt.alpha(Kirigami.Theme.textColor, 0.15)
 
         Rectangle {
             width: parent.width * Math.min(row.percent / 100, 1)
             height: parent.height
-            radius: 3
+            radius: row.barHeight / 2
             color: row.barColor
         }
     }
