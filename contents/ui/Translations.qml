@@ -92,6 +92,7 @@ QtObject {
             "Extra Usage": "Extra Usage",
             "spent": "spent",
             "Today's Tokens": "Today's Tokens",
+            "Tokens by Model": "Tokens by Model",
             "local logs": "local logs",
             "out": "out",
             "7-day trend": "7-day trend",

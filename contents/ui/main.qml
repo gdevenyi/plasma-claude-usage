@@ -91,6 +91,8 @@ PlasmoidItem {
     property string credsSub: ""
 
     property var tokenStats: []
+    property var modelTokens: []  // [{name, tokens, share}] - local per-model tokens in the weekly window
+    readonly property var pieColors: ["#D97757", "#6C9BD1", "#7FB069", "#B983D8", "#E0C060", "#909090"]
 
     // v2.1: time-aware coloring, extra usage, installations, notifications
     property double nowTick: Date.now()
@@ -324,6 +326,7 @@ PlasmoidItem {
             root.modelLimits = []
             root.usageSamples = []
             root.tokenStats = []
+            root.modelTokens = []
             updatePlanName()
             cacheReader.connectSource("cat " + root.cacheFileExpr + " 2>/dev/null")
 
@@ -670,6 +673,69 @@ PlasmoidItem {
         var today = new Date().toISOString().substring(0, 10)
         var script = "bash -c 'find \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects\" -name \"*.jsonl\" -mtime -2 -printf \"%T@ %p\\n\" 2>/dev/null | sort -rn | head -50 | cut -d\" \" -f2- | while read f; do grep -F '\\''\"timestamp\":\"" + today + "'\\'' \"$f\" 2>/dev/null | grep -o '\\''\"model\":\"[^\"]*\".*\"input_tokens\":[0-9]*.*\"output_tokens\":[0-9]*'\\''; done | sed -E '\\''s/.*\"model\":\"([^\"]*)\".*\"input_tokens\":([0-9]+).*\"output_tokens\":([0-9]+).*/\\1|\\2|\\3|0|0/'\\'' 2>/dev/null; true'"
         tokenStatsReader.connectSource(claudeDirEnvPrefix() + script)
+        scanModelUsage()
+    }
+
+    // Aggregates per-model token usage from local Claude Code transcripts
+    // (<config dir>/projects/**/*.jsonl), deduped by message/request id.
+    // Machine-local CLI usage only; does not include claude.ai web/desktop.
+    readonly property string usageScanScript: `import json,glob,os,sys,datetime
+iso=sys.argv[1]
+c=datetime.datetime.fromisoformat(iso.replace("Z","+00:00")).timestamp()
+base=os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
+tot={};seen=set()
+for f in glob.glob(os.path.join(base,"projects","**","*.jsonl"),recursive=True):
+    try:
+        if os.path.getmtime(f)<c: continue
+        with open(f) as fh:
+            for line in fh:
+                try: d=json.loads(line)
+                except: continue
+                m=d.get("message") or {}
+                u=m.get("usage")
+                mod=m.get("model")
+                if not u or not mod or mod=="<synthetic>": continue
+                if (d.get("timestamp") or "")<iso: continue
+                k=(m.get("id") or "")+(d.get("requestId") or "")
+                if k:
+                    if k in seen: continue
+                    seen.add(k)
+                n=u.get("input_tokens",0)+u.get("output_tokens",0)+u.get("cache_creation_input_tokens",0)
+                if n: tot[mod]=tot.get(mod,0)+n
+    except OSError: pass
+print(json.dumps(tot))`
+
+    Plasma5Support.DataSource {
+        id: modelUsageReader
+        engine: "executable"
+        connectedSources: []
+
+        onNewData: function(sourceName, data) {
+            var stdout = (data["stdout"] || "").trim()
+            disconnectSource(sourceName)
+            try {
+                var tot = JSON.parse(stdout)
+                var byName = {}, sum = 0
+                for (var k in tot) {
+                    var name = prettyModelName(k)
+                    byName[name] = (byName[name] || 0) + tot[k]
+                    sum += tot[k]
+                }
+                var arr = []
+                for (name in byName) arr.push({ name: name, tokens: byName[name], share: byName[name] / sum * 100 })
+                arr.sort(function(a, b) { return b.tokens - a.tokens })
+                root.modelTokens = arr
+            } catch (e) {
+                console.log("Claude Usage: Model usage scan failed:", e)
+            }
+        }
+    }
+
+    function scanModelUsage() {
+        // Window start = weekly reset - 7 days, so the pie matches the API's weekly limit window
+        var end = root.weeklyResetTime ? root.weeklyResetTime.getTime() : Date.now() + 7 * 86400000
+        var iso = new Date(end - 7 * 86400000).toISOString()
+        modelUsageReader.connectSource(claudeDirEnvPrefix() + "python3 -c '" + root.usageScanScript + "' " + iso)
     }
 
     // Terminal launcher
@@ -835,6 +901,7 @@ PlasmoidItem {
                     root.weeklyResetTime = new Date(sevenDay.resets_at)
                     root.weeklyReset = Qt.formatDateTime(root.weeklyResetTime, "MMM d, hh:mm")
                 }
+                scanModelUsage()
 
                 root.lastUpdate = Qt.formatTime(new Date(), "hh:mm:ss")
                 root.lastSuccessTime = Date.now()
@@ -985,7 +1052,7 @@ PlasmoidItem {
 
         function classicCardVisible(id) {
             if (id === "extra") return root.extraEnabled
-            if (id === "tokens") return root.tokenStats.length > 0
+            if (id === "tokens") return root.tokenStats.length > 0 || root.modelTokens.length > 0
             if (id === "trend") return root.usageSamples.length >= 2
             if (id === "installations") return root.installations.length > 0
             if (id === "links") return root.parsedQuickLinks.length > 0
@@ -1259,6 +1326,7 @@ PlasmoidItem {
                 spacing: Kirigami.Units.smallSpacing
 
                 PlasmaComponents.Label {
+                    visible: root.tokenStats.length > 0
                     text: i18n.tr("Token Stats (Today)")
                     font.bold: true
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
@@ -1281,6 +1349,8 @@ PlasmoidItem {
                         }
                     }
                 }
+
+                TokenPie { Layout.fillWidth: true }
             }
         }
 
@@ -1531,7 +1601,7 @@ PlasmoidItem {
                     // Dynamic classic sections via cardOrder
                     Repeater {
                         model: {
-                            void(root.extraEnabled, root.tokenStats, root.usageSamples, root.installations, root.parsedQuickLinks)
+                            void(root.extraEnabled, root.tokenStats, root.modelTokens, root.usageSamples, root.installations, root.parsedQuickLinks)
                             return fullRepItem.classicCardOrder.filter(function(c) {
                                 return c.enabled && fullRepItem.classicCardComponents[c.id] !== undefined && fullRepItem.classicCardVisible(c.id)
                             })
