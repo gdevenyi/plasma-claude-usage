@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.6] - 2026-09-10
+
+### Fixed
+
+- Card popup no longer renders clipped on the right when the footer status line is long ("Updated 3m ago · Next update in 2m"); the status label now elides instead of forcing the card column past the popup edge
+
 ## [2.3.5] - 2026-08-30
 
 ### Fixed
