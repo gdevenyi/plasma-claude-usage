@@ -883,18 +883,18 @@ PlasmoidItem {
             ? (cardLoader.item ? cardLoader.item.Layout.preferredHeight : Kirigami.Units.gridUnit * 20)
             : classicColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
-        // While the resize is being forced, pin the minimum to the target as
-        // well as the maximum below. An existing popup is restored at its
+        // Right after a style switch, pin the minimum to the target as well
+        // as the maximum below. An existing popup is restored at its
         // remembered size constrained into [minimum, maximum]; preferredWidth
         // applies only when the popup is first created. After a style switch
         // the remembered size belongs to the other style, so lowering the
         // maximum alone can shrink the popup but can never grow it, and it
         // settles on the minimum instead of the target. Collapsing the range
         // to a single value for the duration leaves no room to settle short.
-        Layout.minimumWidth: resizeForcer.running ? targetWidth : (root.useCardPopup
+        Layout.minimumWidth: styleSwitchPin.running ? targetWidth : (root.useCardPopup
             ? (cardLoader.item ? cardLoader.item.Layout.minimumWidth : Kirigami.Units.gridUnit * 16)
             : Kirigami.Units.gridUnit * 14)
-        Layout.minimumHeight: resizeForcer.running ? targetHeight : (root.useCardPopup
+        Layout.minimumHeight: styleSwitchPin.running ? targetHeight : (root.useCardPopup
             ? (cardLoader.item ? cardLoader.item.Layout.minimumHeight : Kirigami.Units.gridUnit * 16)
             : fullRepItem.classicScrollable ? Kirigami.Units.gridUnit * 4 : Math.min(classicColumn.implicitHeight + Kirigami.Units.largeSpacing * 2, Kirigami.Units.gridUnit * 24))
         Layout.preferredWidth: targetWidth
@@ -908,6 +908,21 @@ PlasmoidItem {
         Timer {
             id: resizeForcer
             interval: 150
+        }
+
+        // The minimum is pinned only right after a style switch; ordinary
+        // content changes keep the max-only clamp so a manually resized
+        // (e.g. scrollable) popup is never grown back to the full target.
+        Timer {
+            id: styleSwitchPin
+            interval: 150
+        }
+        Connections {
+            target: root
+            function onUseCardPopupChanged() {
+                styleSwitchPin.restart()
+                resizeForcer.restart()
+            }
         }
 
         Loader {
