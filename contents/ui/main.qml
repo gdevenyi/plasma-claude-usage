@@ -964,7 +964,8 @@ print(json.dumps(tot))`
                         if (entry.kind === "weekly_all") { root.weeklySeverity = entry.severity || ""; root.weeklyActive = !!entry.is_active; continue }
                         var scope = entry.scope || {}
                         var label = (scope.model && scope.model.display_name) || scope.surface || entry.kind
-                        limits.push({ label: label, percent: entry.percent || 0, severity: entry.severity || "", isActive: !!entry.is_active })
+                        limits.push({ label: label, percent: entry.percent || 0, severity: entry.severity || "", isActive: !!entry.is_active,
+                                      resetsAt: entry.resets_at ? new Date(entry.resets_at).getTime() : 0 })
                     }
                 } else {
                     if (data.seven_day_sonnet) limits.push({ label: "Sonnet", percent: data.seven_day_sonnet.utilization || 0 })
@@ -1379,6 +1380,12 @@ print(json.dumps(tot))`
                             text: Math.round(modelData.percent) + "%"
                             Layout.preferredWidth: 40
                             horizontalAlignment: Text.AlignRight
+                        }
+                        PlasmaComponents.Label {
+                            visible: text !== ""
+                            text: root.limitResetNote(modelData)
+                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                            color: Kirigami.Theme.disabledTextColor
                         }
                     }
                 }
@@ -2207,6 +2214,14 @@ print(json.dumps(tot))`
     function checkForUpdate() {
         if (Plasmoid.configuration.enableUpdateCheck === false) return
         updateChecker.connectSource("curl -sS" + curlProxyArg() + " --max-time 10 https://registry.npmjs.org/@anthropic-ai/claude-code/latest 2>/dev/null")
+    }
+
+    // Reset countdown for a model limit, only when it differs from the weekly reset
+    function limitResetNote(entry) {
+        if (!entry.resetsAt) return ""
+        if (root.weeklyResetTime && Math.abs(entry.resetsAt - root.weeklyResetTime.getTime()) < 60000) return ""
+        void(root.nowTick)
+        return formatTimeRemaining(new Date(entry.resetsAt))
     }
 
     function formatTimeRemaining(resetTime) {
