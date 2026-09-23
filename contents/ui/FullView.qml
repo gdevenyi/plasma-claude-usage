@@ -95,7 +95,7 @@ Item {
             case "usage": return true
             case "models": return root.modelUsage.length > 0 || root.modelLimits.length > 0
             case "extra": return root.extraEnabled
-            case "tokens": return root.tokenStats.length > 0
+            case "tokens": return root.tokenStats.length > 0 || root.modelTokens.length > 0
             case "trend": return root.usageSamples.length >= 2
             case "installations": return root.installations.length > 0
             case "links": return root.parsedQuickLinks.length > 0
@@ -336,7 +336,7 @@ Item {
     Component {
         id: cardTokensComp
         Rectangle {
-            visible: root.tokenStats.length > 0
+            visible: root.tokenStats.length > 0 || root.modelTokens.length > 0
             Layout.fillWidth: true
             radius: Kirigami.Units.cornerRadius
             color: full.cardColor
@@ -349,6 +349,7 @@ Item {
                 spacing: Kirigami.Units.smallSpacing
 
                 RowLayout {
+                    visible: root.tokenStats.length > 0
                     Layout.fillWidth: true
                     PlasmaComponents.Label {
                         font.pixelSize: Kirigami.Theme.smallFont.pixelSize - 1; font.capitalization: Font.AllUppercase
@@ -370,6 +371,8 @@ Item {
                         PlasmaComponents.Label { text: root.formatTokens(modelData.total); font.bold: true; Layout.preferredWidth: Kirigami.Units.gridUnit * 3; horizontalAlignment: Text.AlignRight }
                     }
                 }
+
+                TokenPie { Layout.fillWidth: true }
             }
         }
     }
