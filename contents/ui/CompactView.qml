@@ -135,7 +135,7 @@ Item {
             Layout.preferredWidth: compact.dotSize
             Layout.preferredHeight: compact.dotSize
             radius: compact.dotSize / 2
-            color: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined)
+            color: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined, root.sessionSeverity)
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
         }
 
@@ -144,7 +144,7 @@ Item {
             text: Math.round(root.sessionUsagePercent) + "%"
             font.pixelSize: compact.textFontSize
             font.bold: true
-            color: root.useTimeAware ? root.getUsageColor(root.sessionUsagePercent, root.sessionTimePct) : Kirigami.Theme.textColor
+            color: root.useTimeAware ? root.getUsageColor(root.sessionUsagePercent, root.sessionTimePct, root.sessionSeverity) : Kirigami.Theme.textColor
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
         }
 
@@ -160,7 +160,7 @@ Item {
             Layout.preferredWidth: compact.dotSize
             Layout.preferredHeight: compact.dotSize
             radius: compact.dotSize / 2
-            color: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined)
+            color: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined, root.weeklySeverity)
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
         }
 
@@ -169,7 +169,7 @@ Item {
             text: Math.round(root.weeklyUsagePercent) + "%"
             font.pixelSize: compact.textFontSize
             font.bold: true
-            color: root.useTimeAware ? root.getUsageColor(root.weeklyUsagePercent, root.weeklyTimePct) : Kirigami.Theme.textColor
+            color: root.useTimeAware ? root.getUsageColor(root.weeklyUsagePercent, root.weeklyTimePct, root.weeklySeverity) : Kirigami.Theme.textColor
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
         }
 
@@ -188,7 +188,7 @@ Item {
 
                 Rectangle {
                     width: compact.dotSize; height: compact.dotSize; radius: compact.dotSize / 2
-                    color: root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined)
+                    color: root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined, modelData.severity)
                     opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
                     anchors.verticalCenter: parent.verticalCenter
                 }
@@ -197,7 +197,7 @@ Item {
                     text: Math.round(modelData.percent) + "%"
                     font.pixelSize: compact.textFontSize
                     font.bold: true
-                    color: root.useTimeAware ? root.getUsageColor(modelData.percent, root.weeklyTimePct) : Kirigami.Theme.textColor
+                    color: root.useTimeAware ? root.getUsageColor(modelData.percent, root.weeklyTimePct, modelData.severity) : Kirigami.Theme.textColor
                     opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
                 }
             }
@@ -225,7 +225,7 @@ Item {
                     anchors.margins: 1
                     height: Math.max((parent.height - 2) * Math.min(root.sessionUsagePercent / 100, 1), 1)
                     radius: 2
-                    color: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined)
+                    color: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined, root.sessionSeverity)
                 }
 
                 Rectangle {
@@ -271,7 +271,7 @@ Item {
                     anchors.margins: 1
                     height: Math.max((parent.height - 2) * Math.min(root.weeklyUsagePercent / 100, 1), 1)
                     radius: 2
-                    color: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined)
+                    color: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined, root.weeklySeverity)
                 }
 
                 Rectangle {
@@ -319,7 +319,7 @@ Item {
                         anchors.margins: 1
                         height: Math.max((parent.height - 2) * Math.min(modelData.percent / 100, 1), 1)
                         radius: 2
-                        color: root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined)
+                        color: root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined, modelData.severity)
                     }
 
                     Rectangle {
@@ -354,7 +354,7 @@ Item {
             Layout.preferredHeight: compact.ringSize
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
             percent: root.sessionUsagePercent
-            ringColor: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined)
+            ringColor: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined, root.sessionSeverity)
             markerRel: root.useTimeAware && root.sessionTimePct >= 0 ? root.sessionTimePct / 100 : -1
             lineWidth: compact.ringLineWidth
             fontScale: compact.ringFontScale
@@ -373,7 +373,7 @@ Item {
             Layout.preferredHeight: compact.ringSize
             opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
             percent: root.weeklyUsagePercent
-            ringColor: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined)
+            ringColor: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined, root.weeklySeverity)
             markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
             lineWidth: compact.ringLineWidth
             fontScale: compact.ringFontScale
@@ -394,7 +394,7 @@ Item {
                 Layout.preferredHeight: compact.ringSize
                 opacity: (root.hasTokenError || root.hasRateLimitError) ? 0.5 : root.isStale ? 0.6 : 1.0
                 percent: modelData.percent
-                ringColor: root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined)
+                ringColor: root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined, modelData.severity)
                 markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
                 lineWidth: compact.ringLineWidth
                 fontScale: compact.ringFontScale
