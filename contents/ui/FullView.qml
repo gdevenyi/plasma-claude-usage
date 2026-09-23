@@ -277,6 +277,7 @@ Item {
                     delegate: ModelRow {
                         required property var modelData
                         label: root.modelUsage.length > 0 ? modelData.name : modelData.label + (modelData.isActive ? " ●" : "")
+                        note: root.modelUsage.length > 0 ? "" : root.limitResetNote(modelData)
                         percent: modelData.percent
                         barColor: (root.modelUsage.length > 0 && modelData.key === "fable")
                             ? "#D97757" : root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined, modelData.severity)
