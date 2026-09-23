@@ -190,7 +190,7 @@ Item {
                         Layout.alignment: Qt.AlignHCenter
                         Layout.preferredWidth: full.ringSize; Layout.preferredHeight: full.ringSize
                         percent: root.sessionUsagePercent
-                        ringColor: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined)
+                        ringColor: root.getUsageColor(root.sessionUsagePercent, root.useTimeAware ? root.sessionTimePct : undefined, root.sessionSeverity)
                         markerRel: root.useTimeAware && root.sessionTimePct >= 0 ? root.sessionTimePct / 100 : -1
                         lineWidth: full.ringLineWidth; showPercentSign: true; fontScale: 0.22
                     }
@@ -228,7 +228,7 @@ Item {
                         Layout.alignment: Qt.AlignHCenter
                         Layout.preferredWidth: full.ringSize; Layout.preferredHeight: full.ringSize
                         percent: root.weeklyUsagePercent
-                        ringColor: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined)
+                        ringColor: root.getUsageColor(root.weeklyUsagePercent, root.useTimeAware ? root.weeklyTimePct : undefined, root.weeklySeverity)
                         markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
                         lineWidth: full.ringLineWidth; showPercentSign: true; fontScale: 0.22
                     }
@@ -279,7 +279,7 @@ Item {
                         label: root.modelUsage.length > 0 ? modelData.name : modelData.label
                         percent: modelData.percent
                         barColor: (root.modelUsage.length > 0 && modelData.key === "fable")
-                            ? "#D97757" : root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined)
+                            ? "#D97757" : root.getUsageColor(modelData.percent, root.useTimeAware ? root.weeklyTimePct : undefined, modelData.severity)
                         barHeight: full.barHeight
                     }
                 }
