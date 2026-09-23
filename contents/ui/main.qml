@@ -185,7 +185,7 @@ PlasmoidItem {
             timestamp: Date.now()
         }
         var json = JSON.stringify(cache)
-        cacheWriter.connectSource("echo '" + json.replace(/'/g, "'\\''") + "' > $HOME/.local/share/claude-usage-cache.json")
+        cacheWriter.connectSource("echo '" + json.replace(/'/g, "'\\''") + "' > " + root.cacheFileExpr)
     }
 
     // Stale checker
@@ -317,7 +317,15 @@ PlasmoidItem {
             root.accountTier = ""
             root.credentialsRetryCount = 0
             root.alertedThresholds = ({})
+            root.planName = ""
+            root.sessionUsagePercent = 0
+            root.weeklyUsagePercent = 0
+            root.modelUsage = []
+            root.modelLimits = []
+            root.usageSamples = []
+            root.tokenStats = []
             updatePlanName()
+            cacheReader.connectSource("cat " + root.cacheFileExpr + " 2>/dev/null")
 
             refresh()
             refreshTokenStats()
@@ -358,20 +366,38 @@ PlasmoidItem {
 
     // Assignment prefix so child processes (claude, find) see the same folder.
     // Only emitted when configured, so the default command stays byte-identical.
+    // A .json path with any other name than .credentials.json is a standalone
+    // credentials file: the claude CLI can't be pointed at it, so it gets no
+    // CLAUDE_CONFIG_DIR and no silent refresh (claude would refresh a different file).
+    readonly property bool standaloneCredsFile: /\.json$/i.test(root.configuredClaudePath)
+        && !/(^|\/)\.credentials\.json$/.test(root.configuredClaudePath)
+
     function claudeDirEnvPrefix() {
-        return root.configuredClaudePath ? "env CLAUDE_CONFIG_DIR=" + claudeDirExpr() + " " : ""
+        return root.configuredClaudePath && !root.standaloneCredsFile
+            ? "env CLAUDE_CONFIG_DIR=" + claudeDirExpr() + " " : ""
     }
 
+    // Every instance pointed at its own account keeps its own cache, so usage,
+    // plan and trend history never leak between accounts. The default instance
+    // keeps the original file.
+    readonly property string cacheFileExpr: root.configuredClaudePath
+        ? "\"$HOME/.local/share/claude-usage-cache-" + Plasmoid.id + ".json\""
+        : "$HOME/.local/share/claude-usage-cache.json"
+
     function readCredentialsCmd() {
-        return "cat " + credentialsFileExpr() + " 2>/dev/null"
+        return "cat -- " + credentialsFileExpr() + " 2>/dev/null"
     }
 
     // Claude Code keeps the account file beside the config folder by default
     // ($HOME/.claude.json) but inside it when CLAUDE_CONFIG_DIR is used, so
     // look in the folder first and fall back to $HOME.
     function readAccountCmd() {
-        var dir = root.configuredClaudePath ? claudeDirExpr() : "\"${CLAUDE_CONFIG_DIR:-$HOME}\""
-        return "f=" + dir + "/.claude.json; [ -s \"$f\" ] || f=\"$HOME/.claude.json\"; cat \"$f\" 2>/dev/null"
+        if (!root.configuredClaudePath)
+            return "f=\"${CLAUDE_CONFIG_DIR:-$HOME}\"/.claude.json; [ -s \"$f\" ] || f=\"$HOME/.claude.json\"; cat \"$f\" 2>/dev/null"
+        // A configured folder only falls back to ~/.claude.json when it *is* the
+        // default folder -- otherwise a second account would show the first one's e-mail.
+        var dir = claudeDirExpr()
+        return "f=" + dir + "/.claude.json; [ -s \"$f\" ] || { [ " + dir + " -ef \"$HOME/.claude\" ] && f=\"$HOME/.claude.json\"; }; cat -- \"$f\" 2>/dev/null"
     }
 
     // Credentials reader
@@ -453,6 +479,10 @@ PlasmoidItem {
 
     function startSilentRefresh() {
         root.autoRefreshAttempted = true
+        if (root.standaloneCredsFile) {
+            console.log("Claude Usage: silent refresh skipped for a standalone credentials file")
+            return
+        }
         root.silentRefreshRunning = true
         console.log("Claude Usage: Starting silent session refresh")
         var script = Qt.resolvedUrl("../scripts/silent-refresh.sh").toString().replace("file://", "")
@@ -636,8 +666,9 @@ PlasmoidItem {
     }
 
     function refreshTokenStats() {
-        var today = Qt.formatDateTime(new Date(), "yyyy-MM-dd")
-        var script = "bash -c 'find \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects\" -name \"*.jsonl\" -newer /tmp/.claude-token-stats-marker -o -name \"*.jsonl\" 2>/dev/null | head -50 | while read f; do grep -o '\\''\"model\":\"[^\"]*\".*\"input_tokens\":[0-9]*.*\"output_tokens\":[0-9]*'\\'' \"$f\" 2>/dev/null; done | grep '\\''\"" + today + "'\\'' | sed -E '\\''s/.*\"model\":\"([^\"]*)\".*\"input_tokens\":([0-9]+).*\"output_tokens\":([0-9]+).*/\\1|\\2|\\3|0|0/'\\'' 2>/dev/null; true'"
+        // Log timestamps are UTC, so "today" is the UTC date too.
+        var today = new Date().toISOString().substring(0, 10)
+        var script = "bash -c 'find \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects\" -name \"*.jsonl\" -mtime -2 -printf \"%T@ %p\\n\" 2>/dev/null | sort -rn | head -50 | cut -d\" \" -f2- | while read f; do grep -F '\\''\"timestamp\":\"" + today + "'\\'' \"$f\" 2>/dev/null | grep -o '\\''\"model\":\"[^\"]*\".*\"input_tokens\":[0-9]*.*\"output_tokens\":[0-9]*'\\''; done | sed -E '\\''s/.*\"model\":\"([^\"]*)\".*\"input_tokens\":([0-9]+).*\"output_tokens\":([0-9]+).*/\\1|\\2|\\3|0|0/'\\'' 2>/dev/null; true'"
         tokenStatsReader.connectSource(claudeDirEnvPrefix() + script)
     }
 
@@ -1695,6 +1726,8 @@ PlasmoidItem {
         } else if (tier) {
             root.planName = tier.replace(/^default_/, "").replace(/_/g, " ")
                 .replace(/\b\w/g, function(c) { return c.toUpperCase() })
+        } else {
+            root.planName = ""
         }
         console.log("Claude Usage: plan resolved:", root.planName, "(tier:", tier + ", sub:", root.credsSub + ")")
     }
@@ -1824,7 +1857,7 @@ PlasmoidItem {
         reloadQuickLinks()
         var iconSource = Qt.resolvedUrl("../icons/claude-usage-widget.svg").toString().replace("file://", "")
         iconInstaller.connectSource("bash -c 'ICON_DIR=${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/scalable/apps && mkdir -p $ICON_DIR && cp \"" + iconSource + "\" $ICON_DIR/claude-usage-widget.svg && chmod 644 $ICON_DIR/claude-usage-widget.svg 2>/dev/null'")
-        cacheReader.connectSource("cat $HOME/.local/share/claude-usage-cache.json 2>/dev/null")
+        cacheReader.connectSource("cat " + root.cacheFileExpr + " 2>/dev/null")
         versionReader.connectSource("claude --version 2>/dev/null")
         emailReader.connectSource(readAccountCmd())
         if (Plasmoid.configuration.enableUpdateCheck !== false) checkForUpdate()
