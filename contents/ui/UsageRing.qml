@@ -18,6 +18,9 @@ Item {
     property color trackColor: Qt.alpha(Kirigami.Theme.textColor, 0.15)
     property bool showPercentSign: false
     property real fontScale: 0.3
+    property string centerIcon: ""
+    property bool centerPercentOverlay: false
+    property string cornerLabel: ""
     property real markerRel: -1   // elapsed-time fraction 0..1 shown as a dot; < 0 hides it
 
     readonly property real arcRadius: Math.min(width, height) / 2 - lineWidth / 2
@@ -89,6 +92,8 @@ Item {
 
     PlasmaComponents.Label {
         id: percentLabel
+        visible: ring.centerIcon === "" || ring.centerPercentOverlay
+        z: 1
 
         x: ring.width / 2
            - percentMetrics.tightBoundingRect.x
@@ -101,5 +106,36 @@ Item {
         text: Math.round(ring.percent) + (ring.showPercentSign ? "%" : "")
         font.pixelSize: Math.max(8, ring.height * ring.fontScale)
         font.bold: true
+        style: ring.centerIcon !== "" ? Text.Outline : Text.Normal
+        styleColor: Kirigami.Theme.backgroundColor
+    }
+
+    // Optional provider logo instead of the percentage
+    Image {
+        visible: ring.centerIcon !== ""
+        anchors.centerIn: parent
+        width: (ring.arcRadius - ring.lineWidth) * (ring.centerPercentOverlay ? 1.7 : 1.3)
+        height: width
+        source: ring.centerIcon
+        sourceSize: Qt.size(width * 2, height * 2)
+        fillMode: Image.PreserveAspectFit
+        smooth: true
+        opacity: ring.centerPercentOverlay ? 0.55 : 1.0
+    }
+
+    // Small window label (e.g. "5h" / "7d") in the bottom-right corner
+    PlasmaComponents.Label {
+        visible: ring.cornerLabel !== ""
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.rightMargin: -1
+        anchors.bottomMargin: -1
+        z: 2
+        text: ring.cornerLabel
+        font.pixelSize: Math.max(7, ring.height * 0.26)
+        font.bold: true
+        style: Text.Outline
+        styleColor: Kirigami.Theme.backgroundColor
+        opacity: 0.85
     }
 }

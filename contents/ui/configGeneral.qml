@@ -27,6 +27,9 @@ KCM.SimpleKCM {
     property int cfg_processCheckInterval
     property string cfg_popupStyle
     property string cfg_panelIcon
+    property string cfg_ringCenter
+    property bool cfg_showWindowLabels
+    property int cfg_panelMargin
     property bool cfg_enableNotifications
     property bool cfg_enableUpdateCheck
     property bool cfg_showInstallations
@@ -353,7 +356,34 @@ KCM.SimpleKCM {
             model: ["Claude", "Tile"]
             currentIndex: (cfg_panelIcon || "claude") === "tile" ? 1 : 0
             onCurrentIndexChanged: cfg_panelIcon = currentIndex === 1 ? "tile" : "claude"
-            enabled: cfg_showIcon
+            // also picks the logo shown inside the rings in the logo modes
+            enabled: cfg_showIcon || (cfg_ringCenter || "percent").indexOf("logo") === 0
+        }
+
+        RowLayout {
+            Kirigami.FormData.label: tr("Panel margin:")
+            QQC2.SpinBox {
+                from: 0
+                to: 32
+                value: cfg_panelMargin
+                onValueChanged: cfg_panelMargin = value
+                textFromValue: function(value) { return value + "px" }
+                valueFromText: function(text) { return parseInt(text) || 0 }
+            }
+        }
+
+        QQC2.CheckBox {
+            Kirigami.FormData.label: tr("Window labels:")
+            text: tr("Show 5h/7d on rings")
+            checked: cfg_showWindowLabels
+            onCheckedChanged: cfg_showWindowLabels = checked
+        }
+
+        QQC2.ComboBox {
+            Kirigami.FormData.label: tr("Ring center:")
+            model: [tr("Percent"), tr("Logo"), tr("Logo + %")]
+            currentIndex: cfg_ringCenter === "logo" ? 1 : cfg_ringCenter === "logo_percent" ? 2 : 0
+            onCurrentIndexChanged: cfg_ringCenter = ["percent", "logo", "logo_percent"][currentIndex]
         }
 
         RowLayout {

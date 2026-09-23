@@ -63,10 +63,10 @@ Item {
         : Math.min(Math.round(Kirigami.Theme.defaultFont.pixelSize * root.metricsScale),
                    Math.max(Kirigami.Theme.defaultFont.pixelSize, Math.floor(compact.availableHeight / 1.4)))
 
-    Layout.minimumWidth: usageRow.implicitWidth + Kirigami.Units.largeSpacing * 2
-    Layout.minimumHeight: root.isVerticalLayout ? usageRow.implicitHeight + Kirigami.Units.largeSpacing * 2 : Kirigami.Units.iconSizes.medium
-    Layout.preferredWidth: usageRow.implicitWidth + Kirigami.Units.largeSpacing * 2
-    Layout.preferredHeight: root.isVerticalLayout ? usageRow.implicitHeight + Kirigami.Units.largeSpacing * 2 : -1
+    Layout.minimumWidth: usageRow.implicitWidth + (Plasmoid.configuration.panelMargin !== undefined ? Plasmoid.configuration.panelMargin : 4) * 2
+    Layout.minimumHeight: root.isVerticalLayout ? usageRow.implicitHeight + (Plasmoid.configuration.panelMargin !== undefined ? Plasmoid.configuration.panelMargin : 4) * 2 : Kirigami.Units.iconSizes.medium
+    Layout.preferredWidth: usageRow.implicitWidth + (Plasmoid.configuration.panelMargin !== undefined ? Plasmoid.configuration.panelMargin : 4) * 2
+    Layout.preferredHeight: root.isVerticalLayout ? usageRow.implicitHeight + (Plasmoid.configuration.panelMargin !== undefined ? Plasmoid.configuration.panelMargin : 4) * 2 : -1
 
     MouseArea {
         anchors.fill: parent
@@ -352,6 +352,12 @@ Item {
             markerRel: root.useTimeAware && root.sessionTimePct >= 0 ? root.sessionTimePct / 100 : -1
             lineWidth: compact.ringLineWidth
             fontScale: compact.ringFontScale
+            centerIcon: (Plasmoid.configuration.ringCenter || "percent").indexOf("logo") === 0
+                ? Qt.resolvedUrl((Plasmoid.configuration.panelIcon || "claude") === "tile"
+                ? "../icons/claude-tile.svg" : "../icons/claude.svg").toString()
+                : ""
+            centerPercentOverlay: (Plasmoid.configuration.ringCenter || "percent") === "logo_percent"
+            cornerLabel: Plasmoid.configuration.showWindowLabels === true ? "5h" : ""
         }
 
         UsageRing {
@@ -364,6 +370,12 @@ Item {
             markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
             lineWidth: compact.ringLineWidth
             fontScale: compact.ringFontScale
+            centerIcon: (Plasmoid.configuration.ringCenter || "percent").indexOf("logo") === 0
+                ? Qt.resolvedUrl((Plasmoid.configuration.panelIcon || "claude") === "tile"
+                ? "../icons/claude-tile.svg" : "../icons/claude.svg").toString()
+                : ""
+            centerPercentOverlay: (Plasmoid.configuration.ringCenter || "percent") === "logo_percent"
+            cornerLabel: Plasmoid.configuration.showWindowLabels === true ? "7d" : ""
         }
 
         Repeater {
@@ -378,6 +390,11 @@ Item {
                 markerRel: root.useTimeAware && root.weeklyTimePct >= 0 ? root.weeklyTimePct / 100 : -1
                 lineWidth: compact.ringLineWidth
                 fontScale: compact.ringFontScale
+                centerIcon: (Plasmoid.configuration.ringCenter || "percent").indexOf("logo") === 0
+                    ? Qt.resolvedUrl((Plasmoid.configuration.panelIcon || "claude") === "tile"
+                    ? "../icons/claude-tile.svg" : "../icons/claude.svg").toString()
+                    : ""
+                centerPercentOverlay: (Plasmoid.configuration.ringCenter || "percent") === "logo_percent"
             }
         }
 
