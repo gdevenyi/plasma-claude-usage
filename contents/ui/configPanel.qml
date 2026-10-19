@@ -4,6 +4,7 @@
 */
 
 import QtQuick
+import QtQuick.LocalStorage
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
@@ -63,23 +64,40 @@ KCM.SimpleKCM {
             var stdout = (data["stdout"] || "").trim()
             disconnectSource(sourceName)
             if (stdout.length > 10) {
-                try {
-                    var cache = JSON.parse(stdout)
-                    var models = cache.modelLimits || []
-                    var names = []
-                    for (var i = 0; i < models.length; i++) {
-                        if (models[i].name) names.push(models[i].name)
-                    }
-                    if (names.length > 0) configPage.availableModels = names
-                } catch (e) {
-                    console.log("Config: Cache parse error:", e)
-                }
+                applyCache(stdout)
             }
         }
     }
 
+    function applyCache(json) {
+        try {
+            var cache = JSON.parse(json)
+            var models = cache.modelLimits || []
+            var names = []
+            for (var i = 0; i < models.length; i++) {
+                if (models[i].name) names.push(models[i].name)
+            }
+            if (names.length > 0) configPage.availableModels = names
+        } catch (e) {
+            console.log("Config: Cache parse error:", e)
+        }
+    }
+
+    // The widget keeps its cache in LocalStorage (see main.qml); older versions used a file
     Component.onCompleted: {
-        cacheReader.connectSource("cat $HOME/.local/share/claude-usage-cache.json 2>/dev/null")
+        var json = ""
+        try {
+            var db = LocalStorage.openDatabaseSync("ClaudeUsageWidget", "", "Claude Usage widget cache", 1000000)
+            db.transaction(function(tx) {
+                tx.executeSql("CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT)")
+                var rs = tx.executeSql("SELECT value FROM kv WHERE key = 'cache'")
+                if (rs.rows.length > 0) json = rs.rows.item(0).value
+            })
+        } catch (e) {
+            console.log("Config: Cache read error:", e)
+        }
+        if (json) applyCache(json)
+        else cacheReader.connectSource("cat $HOME/.local/share/claude-usage-cache.json 2>/dev/null")
     }
 
     Kirigami.FormLayout {

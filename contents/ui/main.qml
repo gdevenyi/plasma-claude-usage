@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.LocalStorage
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.components as PlasmaComponents
@@ -116,15 +117,41 @@ PlasmoidItem {
     property var installations: []
     property var alertedThresholds: ({})
 
-    // Cache writer
-    Plasma5Support.DataSource {
-        id: cacheWriter
-        engine: "executable"
-        connectedSources: []
-        onNewData: function(sourceName, data) { disconnectSource(sourceName) }
+    // Usage cache, kept in LocalStorage (SQLite).
+    // It used to be written with `echo '<json>' > file` through the executable
+    // DataSource. Every write then had a new command string (the JSON carries a
+    // timestamp), and plasmashell keeps memory for each distinct command string
+    // it has run, so the cache leaked ~100 KB per write. Keep every
+    // executable command string constant.
+    readonly property string cacheKey: root.configuredClaudePath ? "cache-" + Plasmoid.id : "cache"
+
+    function cacheDb() {
+        var db = LocalStorage.openDatabaseSync("ClaudeUsageWidget", "", "Claude Usage widget cache", 1000000)
+        db.transaction(function(tx) {
+            tx.executeSql("CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT)")
+        })
+        return db
     }
 
-    // Cache reader
+    function loadCache() {
+        var json = ""
+        try {
+            cacheDb().readTransaction(function(tx) {
+                var rs = tx.executeSql("SELECT value FROM kv WHERE key = ?", [root.cacheKey])
+                if (rs.rows.length > 0) json = rs.rows.item(0).value
+            })
+        } catch (e) {
+            console.log("Claude Usage: Cache read error:", e)
+        }
+        if (json) {
+            applyCache(json)
+        } else {
+            // One-time import of the cache file written by older versions
+            cacheReader.connectSource("cat " + root.cacheFileExpr + " 2>/dev/null")
+        }
+    }
+
+    // Legacy cache file reader (import only)
     Plasma5Support.DataSource {
         id: cacheReader
         engine: "executable"
@@ -133,56 +160,58 @@ PlasmoidItem {
         onNewData: function(sourceName, data) {
             var stdout = (data["stdout"] || "").trim()
             disconnectSource(sourceName)
-            if (stdout.length > 10) {
-                try {
-                    var cache = JSON.parse(stdout)
-                    var age = Date.now() - (cache.timestamp || 0)
-                    if (age < 86400000) {
-                        root.sessionUsagePercent = cache.session || 0
-                        root.weeklyUsagePercent = cache.weekly || 0
-                        root.sonnetWeeklyPercent = cache.sonnet || 0
-                        root.opusWeeklyPercent = cache.opus || 0
-                        root.hasSonnetData = cache.hasSonnet || false
-                        root.hasOpusData = cache.hasOpus || false
-                        if (cache.modelLimits) {
-                            root.modelLimits = cache.modelLimits
-                        } else {
-                            var legacyLimits = []
-                            if (cache.hasSonnet) legacyLimits.push({ label: "Sonnet", percent: cache.sonnet || 0 })
-                            if (cache.hasOpus) legacyLimits.push({ label: "Opus", percent: cache.opus || 0 })
-                            root.modelLimits = legacyLimits
-                        }
-                        root.modelUsage = cache.models || []
-                        root.weeklyBreakdown = cache.breakdown || []
-                        root.modelCatalog = cache.modelCatalog || []
-                        root.modelCatalogFetchedAt = cache.modelCatalogFetchedAt || 0
-                        root.sessionSeverity = cache.sessionSeverity || ""
-                        root.weeklySeverity = cache.weeklySeverity || ""
-                        root.sessionActive = cache.sessionActive || false
-                        root.weeklyActive = cache.weeklyActive || false
-                        root.usageSamples = cache.samples || []
-                        root.extraEnabled = cache.extraEnabled || false
-                        root.extraUsedCents = cache.extraUsed || 0
-                        root.extraLimitCents = cache.extraLimit || 0
-                        root.extraCurrency = cache.extraCurrency || "USD"
-                        root.extraDecimals = cache.extraDecimals !== undefined ? cache.extraDecimals : 2
-                        root.extraDisabledReason = cache.extraDisabledReason || ""
-                        root.planName = cache.plan || ""
-                        root.sessionReset = cache.sessionReset || ""
-                        root.weeklyReset = cache.weeklyReset || ""
-                        root.sessionResetTime = cache.sessionResetTs ? new Date(cache.sessionResetTs) : null
-                        root.weeklyResetTime = cache.weeklyResetTs ? new Date(cache.weeklyResetTs) : null
-                        root.lastSuccessTime = cache.timestamp
-                        root.lastUpdate = Qt.formatTime(new Date(cache.timestamp), "hh:mm:ss") + " *"
-                        root.isStale = age > root.staleThresholdMs
-                        console.log("Claude Usage: Loaded cache, age:", Math.round(age/60000), "min, stale:", root.isStale)
-                    } else {
-                        console.log("Claude Usage: Cache too old, ignoring")
-                    }
-                } catch (e) {
-                    console.log("Claude Usage: Cache parse error:", e)
+            if (stdout.length > 10) applyCache(stdout)
+        }
+    }
+
+    function applyCache(json) {
+        try {
+            var cache = JSON.parse(json)
+            var age = Date.now() - (cache.timestamp || 0)
+            if (age < 86400000) {
+                root.sessionUsagePercent = cache.session || 0
+                root.weeklyUsagePercent = cache.weekly || 0
+                root.sonnetWeeklyPercent = cache.sonnet || 0
+                root.opusWeeklyPercent = cache.opus || 0
+                root.hasSonnetData = cache.hasSonnet || false
+                root.hasOpusData = cache.hasOpus || false
+                if (cache.modelLimits) {
+                    root.modelLimits = cache.modelLimits
+                } else {
+                    var legacyLimits = []
+                    if (cache.hasSonnet) legacyLimits.push({ label: "Sonnet", percent: cache.sonnet || 0 })
+                    if (cache.hasOpus) legacyLimits.push({ label: "Opus", percent: cache.opus || 0 })
+                    root.modelLimits = legacyLimits
                 }
+                root.modelUsage = cache.models || []
+                root.weeklyBreakdown = cache.breakdown || []
+                root.modelCatalog = cache.modelCatalog || []
+                root.modelCatalogFetchedAt = cache.modelCatalogFetchedAt || 0
+                root.sessionSeverity = cache.sessionSeverity || ""
+                root.weeklySeverity = cache.weeklySeverity || ""
+                root.sessionActive = cache.sessionActive || false
+                root.weeklyActive = cache.weeklyActive || false
+                root.usageSamples = cache.samples || []
+                root.extraEnabled = cache.extraEnabled || false
+                root.extraUsedCents = cache.extraUsed || 0
+                root.extraLimitCents = cache.extraLimit || 0
+                root.extraCurrency = cache.extraCurrency || "USD"
+                root.extraDecimals = cache.extraDecimals !== undefined ? cache.extraDecimals : 2
+                root.extraDisabledReason = cache.extraDisabledReason || ""
+                root.planName = cache.plan || ""
+                root.sessionReset = cache.sessionReset || ""
+                root.weeklyReset = cache.weeklyReset || ""
+                root.sessionResetTime = cache.sessionResetTs ? new Date(cache.sessionResetTs) : null
+                root.weeklyResetTime = cache.weeklyResetTs ? new Date(cache.weeklyResetTs) : null
+                root.lastSuccessTime = cache.timestamp
+                root.lastUpdate = Qt.formatTime(new Date(cache.timestamp), "hh:mm:ss") + " *"
+                root.isStale = age > root.staleThresholdMs
+                console.log("Claude Usage: Loaded cache, age:", Math.round(age/60000), "min, stale:", root.isStale)
+            } else {
+                console.log("Claude Usage: Cache too old, ignoring")
             }
+        } catch (e) {
+            console.log("Claude Usage: Cache parse error:", e)
         }
     }
 
@@ -217,8 +246,13 @@ PlasmoidItem {
             extraDisabledReason: root.extraDisabledReason,
             timestamp: Date.now()
         }
-        var json = JSON.stringify(cache)
-        cacheWriter.connectSource("echo '" + json.replace(/'/g, "'\\''") + "' > " + root.cacheFileExpr)
+        try {
+            cacheDb().transaction(function(tx) {
+                tx.executeSql("INSERT OR REPLACE INTO kv(key, value) VALUES(?, ?)", [root.cacheKey, JSON.stringify(cache)])
+            })
+        } catch (e) {
+            console.log("Claude Usage: Cache write error:", e)
+        }
     }
 
     // Stale checker
@@ -359,7 +393,7 @@ PlasmoidItem {
             root.tokenStats = []
             root.modelTokens = []
             updatePlanName()
-            cacheReader.connectSource("cat " + root.cacheFileExpr + " 2>/dev/null")
+            loadCache()
 
             refresh()
             refreshTokenStats()
@@ -411,9 +445,9 @@ PlasmoidItem {
             ? "env CLAUDE_CONFIG_DIR=" + claudeDirExpr() + " " : ""
     }
 
-    // Every instance pointed at its own account keeps its own cache, so usage,
-    // plan and trend history never leak between accounts. The default instance
-    // keeps the original file.
+    // Cache file of older versions, only read once to import it. Every instance
+    // pointed at its own account had its own file; the default instance used
+    // the original one.
     readonly property string cacheFileExpr: root.configuredClaudePath
         ? "\"$HOME/.local/share/claude-usage-cache-" + Plasmoid.id + ".json\""
         : "$HOME/.local/share/claude-usage-cache.json"
@@ -2137,7 +2171,7 @@ print(json.dumps(tot))`
         reloadQuickLinks()
         var iconSource = Qt.resolvedUrl("../icons/claude-usage-widget.svg").toString().replace("file://", "")
         iconInstaller.connectSource("bash -c 'ICON_DIR=${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/scalable/apps && mkdir -p $ICON_DIR && cp \"" + iconSource + "\" $ICON_DIR/claude-usage-widget.svg && chmod 644 $ICON_DIR/claude-usage-widget.svg 2>/dev/null'")
-        cacheReader.connectSource("cat " + root.cacheFileExpr + " 2>/dev/null")
+        loadCache()
         versionReader.connectSource("claude --version 2>/dev/null")
         emailReader.connectSource(readAccountCmd())
         if (Plasmoid.configuration.enableUpdateCheck !== false) checkForUpdate()
