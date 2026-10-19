@@ -797,9 +797,12 @@ print(json.dumps(tot))`
     }
 
     function scanModelUsage() {
-        // Window start = weekly reset - 7 days, so the pie matches the API's weekly limit window
-        var end = root.weeklyResetTime ? root.weeklyResetTime.getTime() : Date.now() + 7 * 86400000
-        var iso = new Date(end - 7 * 86400000).toISOString()
+        // Window start = weekly reset - 7 days, so the pie matches the API's weekly limit window.
+        // Floored to the hour so the command string changes at most once a week:
+        // each distinct command string costs plasmashell memory (see cacheKey).
+        if (!root.weeklyResetTime) return
+        var start = root.weeklyResetTime.getTime() - 7 * 86400000
+        var iso = new Date(start - start % 3600000).toISOString()
         modelUsageReader.connectSource(claudeDirEnvPrefix() + "python3 -c '" + root.usageScanScript + "' " + iso)
     }
 
