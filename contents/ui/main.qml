@@ -176,7 +176,7 @@ PlasmoidItem {
         root.extraUsedCents = cache.extraUsed || 0
         root.extraLimitCents = cache.extraLimit || 0
         root.extraCurrency = cache.extraCurrency || "USD"
-        root.extraDecimals = cache.extraDecimals !== undefined ? cache.extraDecimals : 2
+        root.extraDecimals = typeof cache.extraDecimals === "number" ? cache.extraDecimals : 2
         root.extraDisabledReason = cache.extraDisabledReason || ""
         root.planName = cache.plan || ""
         root.sessionReset = cache.sessionReset || ""
@@ -1047,7 +1047,9 @@ print(json.dumps(tot))`
                 root.extraUsedCents = extra.used_credits || 0
                 root.extraLimitCents = extra.monthly_limit || 0
                 root.extraCurrency = extra.currency || "USD"
-                root.extraDecimals = extra.decimal_places !== undefined ? extra.decimal_places : 2
+                // The API sends null for every extra_usage field when extra usage is off;
+                // null into an int property throws and the whole response is lost.
+                root.extraDecimals = typeof extra.decimal_places === "number" ? extra.decimal_places : 2
                 root.extraDisabledReason = (!extra.is_enabled && !extra.user_disabled && extra.disabled_reason) || ""
 
                 if (fiveHour.resets_at) {
